@@ -1,0 +1,23 @@
+:root {
+  --paper: #f8f6f1;
+  --ink: #30322b;
+  --muted: #68695f;
+  --clay: #99624d;
+  --olive: #59624a;
+  --sand: #e9e3d9;
+  --sand-light: #efede6;
+  --line: #dedbd2;
+  --line-strong: #b9b6ac;
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body: "Manrope", Arial, sans-serif;
+  --space-xs: 8px;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 40px;
+  --space-xl: 64px;
+  --radius-sm: 2px;
+  --shadow: 0 12px 40px rgba(35, 35, 29, 0.15);
+  --motion-fast: 180ms;
+  --breakpoint-mobile: 767px;
+  --breakpoint-tablet: 1100px;
+}

@@ -1,0 +1,113 @@
+.card {
+  min-width: 0;
+}
+.visual {
+  position: relative;
+  overflow: hidden;
+  background: var(--sand);
+  aspect-ratio: 4/5;
+}
+.visual > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition:
+    transform 0.5s,
+    opacity 0.4s;
+}
+.secondary {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.wishlist {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  background: rgba(248, 246, 241, 0.94);
+  border: 0;
+  border-radius: 50%;
+  height: 44px;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+  cursor: pointer;
+}
+.wishlist[aria-pressed="true"] {
+  color: var(--clay);
+}
+.info {
+  padding: 18px 0 6px;
+}
+.creator {
+  font-size: 10px;
+  letter-spacing: 0.055em;
+  color: var(--muted);
+  margin: 0 0 7px;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.row h3 {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin: 0;
+}
+.row span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.meta {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.sold {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  background: var(--paper);
+  font-size: 10px;
+}
+@media (hover: hover) {
+  .visual:hover img {
+    transform: scale(1.035);
+  }
+  .visual:hover .secondary {
+    opacity: 1;
+  }
+}
+@media (max-width: 600px) {
+  .row {
+    display: block;
+  }
+  .row h3 {
+    font-size: 12px;
+  }
+  .row span {
+    display: block;
+    margin-top: 4px;
+  }
+  .wishlist {
+    top: 7px;
+    right: 7px;
+  }
+  .meta {
+    display: none;
+  }
+  .info {
+    padding-top: 12px;
+  }
+}
