@@ -2,9 +2,9 @@
 
 ## Where we are
 
-**Phase 1 (frontend end-to-end) is DONE.** Phase 2 repository, scripts, and
-environment setup are complete; the Express entry point is next. Phase 3 has
-not started beyond its Mongoose model scaffolding.
+**Phase 1 (frontend end-to-end) is DONE.** Phase 2 repository, scripts,
+environment setup, and the Express health server are complete. The in-memory
+store is next. Phase 3 has not started beyond its Mongoose model scaffolding.
 
 ## Phase 1 — what was built and verified
 

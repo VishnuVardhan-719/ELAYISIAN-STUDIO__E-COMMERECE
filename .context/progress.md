@@ -15,7 +15,7 @@
 ## Phase 2 — Backend + connect the frontend  (setup started)
 
 - [x] 2.1 Add npm scripts (`dev:api`, `typecheck:api`, `dev:all`)
-- [ ] 2.2 `server/.env` + `.env.example`; `server/src/index.ts` (env files done)
+- [x] 2.2 `server/.env` + `.env.example`; `server/src/index.ts`
 - [ ] 2.3 `server/src/store.ts` — in-memory store seeded from `src/data/mock.ts`
 - [ ] 2.4 `server/src/middleware/auth.ts` — `requireAuth`, `requireRole`
 - [ ] 2.5 Routes: auth, products, categories, creators, collections,
