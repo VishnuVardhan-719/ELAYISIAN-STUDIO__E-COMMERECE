@@ -1,5 +1,10 @@
 # Phase 2 + Phase 3 — implementation brief
 
+Historical implementation brief. The current source is organized into
+`frontend/`, `backend/`, and `database/`; `server/` no longer exists. See
+`.context/activeContext.md` for current paths, completed work, and verification.
+The service contract below still applies, but its old file paths are historical.
+
 Self-contained. Read this, then `.context/activeContext.md`, then
 `src/services/mockAdapter.ts` (which is the reference implementation of the
 contract you must reimplement over HTTP).

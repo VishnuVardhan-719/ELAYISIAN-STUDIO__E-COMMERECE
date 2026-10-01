@@ -1,5 +1,8 @@
 # Project brief
 
+This is the original Phase 1 structure snapshot. For the current frontend,
+backend, and database paths and REST/MongoDB status, read `activeContext.md`.
+
 **What it is:** Elysian Studio — a handmade-marketplace + creator-collaboration
 demo, built as a Database Systems Engineering project.
 

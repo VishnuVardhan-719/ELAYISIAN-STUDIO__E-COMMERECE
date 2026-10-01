@@ -1,5 +1,23 @@
 # Progress
 
+## September 30, 2026 — folder reorganization
+
+- [x] Read saved context, Git history, and existing uncommitted implementation.
+- [x] Verify pre-move baseline: typecheck, lint, and 91 unit/integration tests.
+- [x] Organize existing files into frontend, backend, database, and documentation.
+- [x] Update imports, root commands, environments, test configs, and helper paths.
+- [x] Preserve all 131 recorded files, unchanged frontend code/assets, model
+      definitions, review PDFs, prior logs, and historical store backup.
+- [x] Reverify typecheck/lint and all 91 tests after moving files.
+- [x] Record final build and browser verification in activeContext.md: build
+      passed; all 25 browser checks passed across the interrupted run (15) and
+      the separate remaining-checks run (10), not one uninterrupted full run.
+
+The phase checklist below is an earlier snapshot. REST services, API routes,
+MongoDB persistence, isolated tests, and database documentation already exist;
+read `activeContext.md` and current source before treating old unchecked tasks
+as missing work.
+
 ## Phase 1 — Frontend end to end (mock-backed)
 
 - [x] 1.1 Persistent localStorage store + `mockAdapter` rewrite
@@ -16,8 +34,8 @@
 
 - [x] 2.1 Add npm scripts (`dev:api`, `typecheck:api`, `dev:all`)
 - [x] 2.2 `server/.env` + `.env.example`; `server/src/index.ts`
-- [ ] 2.3 `server/src/store.ts` — in-memory store seeded from `src/data/mock.ts`
-- [ ] 2.4 `server/src/middleware/auth.ts` — `requireAuth`, `requireRole`
+- [x] 2.3 `server/src/store.ts` — in-memory store seeded from `src/data/mock.ts`
+- [x] 2.4 `server/src/middleware/auth.ts` — `requireAuth`, `requireRole`
 - [ ] 2.5 Routes: auth, products, categories, creators, collections,
       collaborations, cart, wishlist, orders, payments, users, admin
 - [ ] 2.6 `src/services/restAdapter.ts` with the identical export surface

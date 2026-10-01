@@ -1,0 +1,538 @@
+import { hashSync } from "bcryptjs";
+import {
+  addresses as seedAddresses,
+  categories as seedCategories,
+  collaborations as seedCollaborations,
+  collections as seedCollections,
+  creators as seedCreators,
+  orders as seedOrders,
+  payments as seedPayments,
+  products as seedProducts,
+  users as seedUsers,
+} from "../../src/data/mock";
+import type {
+  Address,
+  CartItem,
+  Category,
+  Collaboration,
+  CollaborationInput,
+  Collection,
+  Creator,
+  Order,
+  PageResult,
+  Payment,
+  Product,
+  ProductFilters,
+  User,
+} from "../../src/types/domain";
+import {
+  filterProducts,
+  normalizeCart,
+  validateCollaboration,
+} from "../../src/utils/commerce";
+
+export const DEMO_PASSWORD = "elysian123";
+
+export interface StoredUser {
+  user: User;
+  passwordHash: string;
+}
+
+export interface CheckoutInput {
+  userId: string;
+  items: CartItem[];
+  address: Omit<Address, "id" | "userId">;
+}
+
+export type PaymentProvider = (input: {
+  orderId: string;
+  amount: number;
+}) => Promise<Payment>;
+
+interface StoreState {
+  products: Product[];
+  categories: Category[];
+  collections: Collection[];
+  creators: Creator[];
+  collaborations: Collaboration[];
+  orders: Order[];
+  payments: Payment[];
+  addresses: Address[];
+  users: StoredUser[];
+  carts: Map<string, CartItem[]>;
+  wishlists: Map<string, string[]>;
+}
+
+const copy = <T>(value: T): T => structuredClone(value);
+const demoPasswordHash = hashSync(DEMO_PASSWORD, 10);
+
+function seedState(): StoreState {
+  const users = copy(seedUsers);
+  const creator = users.find((user) => user.role === "creator");
+  if (creator) creator.creatorId = seedCreators[0]?.id;
+  return {
+    products: copy(seedProducts),
+    categories: copy(seedCategories),
+    collections: copy(seedCollections),
+    creators: copy(seedCreators),
+    collaborations: copy(seedCollaborations),
+    orders: copy(seedOrders),
+    payments: copy(seedPayments),
+    addresses: copy(seedAddresses).map((address) => ({
+      ...address,
+      userId: "demo-customer",
+    })),
+    users: users.map((user) => ({ user, passwordHash: demoPasswordHash })),
+    carts: new Map(),
+    wishlists: new Map(),
+  };
+}
+
+let state = seedState();
+let checkoutQueue = Promise.resolve();
+
+export function resetStore(): void {
+  state = seedState();
+  checkoutQueue = Promise.resolve();
+}
+
+function nextSequentialId(existing: string[], prefix: string, width: number): string {
+  const pattern = new RegExp(`^${prefix}-(\\d+)$`);
+  const highest = existing.reduce((max, id) => {
+    const match = pattern.exec(id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return `${prefix}-${String(highest + 1).padStart(width, "0")}`;
+}
+
+export function listProducts(
+  filters: ProductFilters = {},
+  creatorId?: string,
+): PageResult<Product> {
+  return copy(
+    filterProducts(
+      creatorId
+        ? state.products.filter((product) => product.creatorId === creatorId)
+        : state.products,
+      filters,
+    ),
+  );
+}
+
+export function listAllProducts(): Product[] {
+  return copy(state.products);
+}
+
+export function getProductById(id: string): Product | null {
+  return copy(
+    state.products.find((product) => product.id === id && product.status === "active") ??
+      null,
+  );
+}
+
+export function listRelatedProducts(id: string): Product[] {
+  const categoryId = state.products.find((product) => product.id === id)?.categoryId;
+  return copy(
+    state.products
+      .filter(
+        (product) =>
+          product.id !== id &&
+          product.status === "active" &&
+          product.categoryId === categoryId,
+      )
+      .slice(0, 4),
+  );
+}
+
+export function listProductsForCreator(creatorId: string): Product[] {
+  return copy(state.products.filter((product) => product.creatorId === creatorId));
+}
+
+export function listProductsByIds(ids: string[]): Product[] {
+  return copy(state.products.filter((product) => ids.includes(product.id)));
+}
+
+export function saveProduct(product: Product): Product {
+  if (
+    !product.name.trim() ||
+    !Number.isFinite(product.price) ||
+    product.price <= 0 ||
+    !Number.isInteger(product.stock) ||
+    product.stock < 0
+  )
+    throw new Error("Enter a name, positive price and valid stock.");
+  const index = state.products.findIndex((entry) => entry.id === product.id);
+  if (index === -1) state.products.push(copy(product));
+  else state.products[index] = copy(product);
+  return copy(product);
+}
+
+export function listCategories(): Category[] {
+  return copy(state.categories);
+}
+
+export function listCollections(): Collection[] {
+  return copy(state.collections);
+}
+
+export function getCollectionBySlug(slug: string): Collection | null {
+  return copy(state.collections.find((collection) => collection.slug === slug) ?? null);
+}
+
+export function listCreators(): Creator[] {
+  return copy(state.creators);
+}
+
+export function getCreatorById(id: string): Creator | null {
+  return copy(state.creators.find((creator) => creator.id === id) ?? null);
+}
+
+export function updateCreator(
+  id: string,
+  patch: Partial<Omit<Creator, "id">>,
+): Creator | null {
+  const index = state.creators.findIndex((creator) => creator.id === id);
+  if (index === -1) return null;
+  state.creators[index] = { ...state.creators[index], ...copy(patch) };
+  return copy(state.creators[index]);
+}
+
+export function listCollaborations(): Collaboration[] {
+  return copy(state.collaborations);
+}
+
+export function getCollaborationFor(email: string): Collaboration | null {
+  const normalized = email.trim().toLowerCase();
+  return copy(
+    state.collaborations
+      .filter((entry) => entry.email.toLowerCase() === normalized)
+      .at(-1) ?? null,
+  );
+}
+
+export function createCollaboration(input: CollaborationInput): Collaboration {
+  if (Object.keys(validateCollaboration(input)).length)
+    throw new Error("Please check the application fields.");
+  const collaboration: Collaboration = {
+    id: nextSequentialId(
+      state.collaborations.map((entry) => entry.id),
+      "COL",
+      3,
+    ),
+    creatorName: input.name,
+    email: input.email,
+    categoryId: input.categoryId,
+    description: input.description,
+    status: "pending",
+    date: new Date().toISOString().slice(0, 10),
+  };
+  state.collaborations.push(collaboration);
+  return copy(collaboration);
+}
+
+export function reviewCollaboration(
+  id: string,
+  status: Collaboration["status"],
+): Collaboration | null {
+  const index = state.collaborations.findIndex((entry) => entry.id === id);
+  if (index === -1) return null;
+  state.collaborations[index] = { ...state.collaborations[index], status };
+  return copy(state.collaborations[index]);
+}
+
+export function listUsers(): User[] {
+  return copy(state.users.map((entry) => entry.user));
+}
+
+export function getUserById(id: string): User | null {
+  return copy(state.users.find((entry) => entry.user.id === id)?.user ?? null);
+}
+
+export function getUserByEmail(email: string): StoredUser | null {
+  const normalized = email.trim().toLowerCase();
+  return copy(
+    state.users.find((entry) => entry.user.email.toLowerCase() === normalized) ?? null,
+  );
+}
+
+export function createUser(input: {
+  name: string;
+  email: string;
+  password: string;
+}): User {
+  const email = input.email.trim().toLowerCase();
+  if (input.name.trim().length < 2) throw new Error("Enter your full name.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    throw new Error("Enter a valid email address.");
+  if (input.password.length < 8)
+    throw new Error("Choose a password of at least 8 characters.");
+  if (Buffer.byteLength(input.password, "utf8") > 72)
+    throw new Error("Choose a password of at most 72 bytes.");
+  if (state.users.some((entry) => entry.user.email.toLowerCase() === email))
+    throw new Error("An account already exists for that email.");
+  const user: User = {
+    id: `user-${Date.now().toString(36)}`,
+    name: input.name.trim(),
+    email,
+    role: "customer",
+  };
+  state.users.push({ user, passwordHash: hashSync(input.password, 10) });
+  return copy(user);
+}
+
+export function updateUser(
+  id: string,
+  patch: Partial<Pick<User, "name" | "email">>,
+): User | null {
+  const entry = state.users.find((candidate) => candidate.user.id === id);
+  if (!entry) return null;
+  const email = patch.email?.trim().toLowerCase();
+  if (
+    email &&
+    state.users.some(
+      (candidate) => candidate.user.id !== id && candidate.user.email === email,
+    )
+  )
+    throw new Error("An account already exists for that email.");
+  entry.user = {
+    ...entry.user,
+    ...copy(patch),
+    email: email ?? entry.user.email,
+  };
+  return copy(entry.user);
+}
+
+export function listAddresses(userId?: string): Address[] {
+  return copy(
+    userId
+      ? state.addresses.filter((address) => address.userId === userId)
+      : state.addresses,
+  );
+}
+
+export function saveAddress(
+  userId: string,
+  address: Omit<Address, "userId">,
+): Address[] {
+  const existing = state.addresses.find((entry) => entry.id === address.id);
+  if (existing && existing.userId !== userId) throw new Error("Address not found.");
+  state.addresses = [
+    ...state.addresses.filter((entry) => entry.id !== address.id),
+    { ...copy(address), userId },
+  ];
+  return listAddresses(userId);
+}
+
+export function removeAddress(userId: string, id: string): Address[] {
+  if (!state.addresses.some((address) => address.id === id && address.userId === userId))
+    throw new Error("Address not found.");
+  state.addresses = state.addresses.filter((address) => address.id !== id);
+  return listAddresses(userId);
+}
+
+export function getCart(userId: string): CartItem[] {
+  return copy(state.carts.get(userId) ?? []);
+}
+
+function setCart(userId: string, items: CartItem[]): CartItem[] {
+  const normalized = normalizeCart(items, state.products);
+  state.carts.set(userId, normalized);
+  return copy(normalized);
+}
+
+export function addCartItem(
+  userId: string,
+  productId: string,
+  quantity = 1,
+): CartItem[] {
+  const product = state.products.find(
+    (entry) => entry.id === productId && entry.status === "active",
+  );
+  if (!product || product.stock === 0)
+    throw new Error("This piece is currently unavailable.");
+  if (!Number.isInteger(quantity) || quantity < 1)
+    throw new Error("Choose a valid quantity.");
+  const cart = getCart(userId);
+  const inBag = cart.find((item) => item.productId === productId)?.quantity ?? 0;
+  if (inBag + quantity > product.stock)
+    throw new Error(
+      `Only ${product.stock} available. You already have ${inBag} in your bag.`,
+    );
+  return setCart(userId, [...cart, { productId, quantity }]);
+}
+
+export function updateCartItem(
+  userId: string,
+  productId: string,
+  quantity: number,
+): CartItem[] {
+  return setCart(
+    userId,
+    getCart(userId).map((item) =>
+      item.productId === productId ? { ...item, quantity } : item,
+    ),
+  );
+}
+
+export function removeCartItem(userId: string, productId: string): CartItem[] {
+  return setCart(
+    userId,
+    getCart(userId).filter((item) => item.productId !== productId),
+  );
+}
+
+export function clearCart(userId: string): CartItem[] {
+  return setCart(userId, []);
+}
+
+export function getWishlist(userId: string): string[] {
+  return copy(state.wishlists.get(userId) ?? []);
+}
+
+export function setWishlist(userId: string, productIds: string[]): string[] {
+  const wishlist = [...new Set(productIds)];
+  state.wishlists.set(userId, wishlist);
+  return copy(wishlist);
+}
+
+export function listOrders(): Order[] {
+  return copy(state.orders);
+}
+
+export function listOrdersForUser(userId: string): Order[] {
+  return copy(state.orders.filter((order) => order.userId === userId));
+}
+
+export function getOrderById(id: string): Order | null {
+  return copy(state.orders.find((order) => order.id === id) ?? null);
+}
+
+export function listOrdersForCreator(creatorId: string): Order[] {
+  return copy(
+    state.orders.flatMap((order) => {
+      const items = order.items.filter((item) =>
+        state.products.some(
+          (product) =>
+            product.id === item.productId && product.creatorId === creatorId,
+        ),
+      );
+      return items.length
+        ? [
+            {
+              ...order,
+              items,
+              total: items.reduce(
+                (sum, item) => sum + item.quantity * item.unitPrice,
+                0,
+              ),
+            },
+          ]
+        : [];
+    }),
+  );
+}
+
+export function listPayments(): Payment[] {
+  return copy(state.payments);
+}
+
+const recordDemoPayment: PaymentProvider = async ({ orderId, amount }) => ({
+  id: nextSequentialId(
+    state.payments.map((payment) => payment.id),
+    "PAY",
+    3,
+  ),
+  orderId,
+  amount,
+  method: "UPI (sample)",
+  status: "Recorded demo",
+});
+
+export async function createCheckout(
+  input: CheckoutInput,
+  paymentProvider: PaymentProvider = recordDemoPayment,
+): Promise<Order> {
+  const run = checkoutQueue.then(() => performCheckout(input, paymentProvider));
+  checkoutQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function performCheckout(
+  input: CheckoutInput,
+  paymentProvider: PaymentProvider,
+): Promise<Order> {
+  if (!input.items.length) throw new Error("Your bag is empty.");
+  const quantities = new Map<string, number>();
+  for (const item of input.items) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1)
+      throw new Error("Choose a valid quantity.");
+    quantities.set(
+      item.productId,
+      (quantities.get(item.productId) ?? 0) + item.quantity,
+    );
+  }
+  const lines = [...quantities].flatMap(([productId, quantity]) => {
+    const product = state.products.find(
+      (entry) => entry.id === productId && entry.status === "active",
+    );
+    if (!product) return [];
+    if (quantity > product.stock)
+      throw new Error(`Only ${product.stock} of ${product.name} remain.`);
+    return [
+      {
+        productId: product.id,
+        name: product.name,
+        quantity,
+        unitPrice: product.price,
+      },
+    ];
+  });
+  if (!lines.length)
+    throw new Error("None of these pieces are available any more.");
+
+  const total = lines.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0,
+  );
+  const order: Order = {
+    id: nextSequentialId(
+      state.orders.map((entry) => entry.id),
+      "ELS",
+      4,
+    ),
+    userId: input.userId,
+    date: new Date().toISOString().slice(0, 10),
+    items: lines,
+    total,
+    status: "Processing",
+  };
+  const payment = await paymentProvider({ orderId: order.id, amount: total });
+
+  state.orders.push(order);
+  state.payments.push(copy(payment));
+  state.products = state.products.map((product) => {
+    const line = lines.find((item) => item.productId === product.id);
+    return line ? { ...product, stock: product.stock - line.quantity } : product;
+  });
+  clearCart(input.userId);
+  return copy(order);
+}
+
+export function getAdminSummary(): {
+  products: number;
+  creators: number;
+  orders: number;
+  pending: number;
+  lowStock: number;
+} {
+  return {
+    products: state.products.length,
+    creators: state.creators.length,
+    orders: state.orders.length,
+    pending: state.collaborations.filter((entry) => entry.status === "pending").length,
+    lowStock: state.products.filter((product) => product.stock < 4).length,
+  };
+}
