@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cartTotal,
+  checkoutShipping,
   filterProducts,
   formatPrice,
   normalizeCart,
@@ -26,6 +27,14 @@ const valid: CollaborationInput = {
   terms: true,
 };
 describe("Commerce rules", () => {
+  it("waives shipping only for a nonempty bookmark-only bag or the subtotal threshold", () => {
+    const bookmark = { productId: "expo-demo-bookmark", quantity: 1 };
+    expect(checkoutShipping(1, [bookmark])).toBe(0);
+    expect(checkoutShipping(2, [bookmark, bookmark])).toBe(0);
+    expect(checkoutShipping(0, [])).toBe(150);
+    expect(checkoutShipping(2999, [bookmark, { productId: "studio-cup", quantity: 1 }])).toBe(150);
+    expect(checkoutShipping(3000, [{ productId: "studio-cup", quantity: 4 }])).toBe(0);
+  });
   it("formats prices using INR and Indian grouping", () =>
     expect(formatPrice(123450)).toBe("₹1,23,450"));
   it("combines search, category and maximum price", () => {

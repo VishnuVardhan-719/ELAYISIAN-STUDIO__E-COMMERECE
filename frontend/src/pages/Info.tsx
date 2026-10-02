@@ -57,15 +57,15 @@ export default function Info() {
       sections: [
         [
           "About this studio",
-          "Elysian Studio is currently a frontend demonstration for a Database Systems Engineering project. A live support channel has not been connected.",
+          "Elysian Studio is a full-stack demonstration for a Database Systems Engineering project. A live support channel has not been connected.",
         ],
         [
           "For makers",
-          "Use the collaboration form to prepare an application preview. It validates your details without sending them.",
+          "Use the collaboration form to submit a demonstration application. Validated applications are saved for administrator review.",
         ],
         [
           "For collectors",
-          "Explore the product pages for materials, dimensions and indicative shipping details. Ordering will be enabled when the live service launches.",
+          "Explore the product pages for materials, dimensions and indicative shipping details. Checkout creates demonstration orders only; no real purchases are fulfilled.",
         ],
       ],
     },
@@ -75,7 +75,7 @@ export default function Info() {
       sections: [
         [
           "Shipping preview",
-          "The demo estimates delivery in 5–8 working days within India. Estimated shipping is ₹150, or complimentary for baskets of ₹3,000 or more.",
+          "The demo estimates delivery in 5–8 working days within India. Estimated shipping is ₹150, or complimentary for baskets of ₹3,000 or more. The expo demo bookmark has zero shipping when purchased on its own. These are demonstration estimates, not delivery promises.",
         ],
         [
           "Handmade takes its own time",
@@ -83,25 +83,25 @@ export default function Info() {
         ],
         [
           "Returns at launch",
-          "Return eligibility, damage reporting and refunds will be confirmed in the live store’s published policy. This demo cannot accept orders or process returns.",
+          "Return eligibility, damage reporting and refunds will be confirmed in the live store’s published policy. This demo records sample orders but does not fulfil purchases or process real refunds.",
         ],
       ],
     },
     "/privacy": {
       title: "Your details, treated thoughtfully.",
-      intro: "How this frontend demonstration handles information.",
+      intro: "How this demonstration handles information.",
       sections: [
         [
           "Stored on this device",
-          "Your shopping bag and wishlist are stored in your browser’s local storage. Clear the site’s browser data to remove them.",
+          "Guest shopping bags, saved items and session tokens use browser storage. Signed-in account and order records are stored in MongoDB. Clearing browser data does not delete server-side records. Use fictional details for this expo demonstration.",
         ],
         [
           "Forms and uploads",
-          "Form entries are held in memory during this session. Application images stay on your device; no uploads, newsletter subscriptions or account registrations are transmitted.",
+          "Account registrations, addresses and collaboration applications are sent to the backend and saved in MongoDB. Passwords are stored as hashes. Image files are not uploaded and newsletter subscriptions are not connected. Do not enter sensitive personal information for this demonstration.",
         ],
         [
           "External connections",
-          "The app’s fonts and images are bundled locally. External links, such as Instagram, have their own privacy practices. This demonstration has no analytics or payment tracking.",
+          "The app’s fonts and images are bundled locally. When enabled, Razorpay test mode sends checkout requests to Razorpay and stores sandbox payment references on our server. No real money is charged. External services and links have their own privacy practices. Application analytics tracking is not enabled.",
         ],
       ],
     },
@@ -115,11 +115,11 @@ export default function Info() {
         ],
         [
           "Creator collaboration",
-          "The application preview is intended for original work created by the applicant. It does not send a request, grant approval, or form a commercial agreement.",
+          "The application is intended for original work created by the applicant. It sends a demonstration request for administrator review, but does not form a commercial agreement.",
         ],
         [
           "Future launch",
-          "Live marketplace terms, payment conditions, returns, and creator agreements must be defined before commerce is enabled.",
+          "Live marketplace terms, payment conditions, returns, and creator agreements must be defined before real commerce is enabled. Sandbox checkout is for educational demonstrations only.",
         ],
       ],
     },

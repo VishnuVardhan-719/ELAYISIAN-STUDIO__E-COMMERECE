@@ -111,7 +111,7 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
           <p className="muted">
             New here? <Link className="textLink" to="/register">Create an account</Link>
           </p>
-          <section className="infoSection">
+          {!(import.meta.env.PROD && import.meta.env.VITE_API_MODE === "rest") && <section className="infoSection">
             <h2>Demo accounts</h2>
             <p>
               Every seeded account shares the password{" "}
@@ -130,7 +130,7 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
                 </button>
               ))}
             </div>
-          </section>
+          </section>}
         </>
       ) : (
         <p className="muted">

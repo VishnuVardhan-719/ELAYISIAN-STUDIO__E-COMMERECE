@@ -2,6 +2,7 @@ import type { CartItem, CollaborationInput, Collection, Creator, User } from "..
 import { normalizeCart } from "../utils/commerce";
 import { apiRequest, ApiError, readToken } from "./http";
 import * as mock from "./mockAdapter";
+import { paymentService } from "./paymentService";
 
 export type { AuthResult } from "./mockAdapter";
 export const { DEMO_PASSWORD, SESSION_KEY, CART_KEY, WISHLIST_KEY, followStore } = mock;
@@ -98,7 +99,14 @@ export const orderService: typeof mock.orderService = {
   listForUser: (userId) => apiRequest(`/orders?userId=${idPath(userId)}`),
   getById: (id) => apiRequest(`/orders/${idPath(id)}`),
   listForCreator: (creatorId) => apiRequest(`/orders?creatorId=${idPath(creatorId)}`),
-  create: (input) => write("/orders", "POST", input),
+  create: async (input) => {
+    const token = readToken();
+    const config = await paymentService.config();
+    if (readToken() !== token) throw new Error("Your session changed. Reopen checkout with the correct account.");
+    return config.enabled
+      ? paymentService.create({ items: input.items, address: input.address }, token)
+      : write("/orders", "POST", input);
+  },
 };
 
 export const accountService: typeof mock.accountService = {

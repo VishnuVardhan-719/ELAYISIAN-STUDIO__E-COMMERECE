@@ -79,6 +79,9 @@ export function cartTotal(items: CartItem[], products: Product[]) {
     0,
   );
 }
+export function checkoutShipping(subtotal: number, items: CartItem[]): number {
+  return (items.length > 0 && items.every((item) => item.productId === "expo-demo-bookmark")) || subtotal >= 3000 ? 0 : 150;
+}
 export function validateCollaboration(input: CollaborationInput) {
   const errors: Partial<Record<keyof CollaborationInput, string>> = {};
   if (input.name.trim().length < 2) errors.name = "Enter your full name.";

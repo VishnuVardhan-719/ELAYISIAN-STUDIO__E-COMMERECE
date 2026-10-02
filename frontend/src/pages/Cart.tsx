@@ -1,11 +1,11 @@
-import { useCallback, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Check, Trash2, ShoppingBag } from "lucide-react";
 import { useStudio } from "../context/StudioContext";
 import { useAuth } from "../context/AuthContext";
-import { accountService, orderService, productService } from "../services/api";
+import { accountService, orderService, paymentService, productService, type PaymentAttempt } from "../services/api";
 import { useResource } from "../hooks/useResource";
-import { cartTotal, formatDate, formatPrice } from "../utils/commerce";
+import { cartTotal, checkoutShipping, formatDate, formatPrice } from "../utils/commerce";
 import {
   Arrow,
   Badge,
@@ -21,27 +21,60 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
   const { cart, updateCart, removeFromCart, clearCart, busy, notify } =
     useStudio();
   const { user } = useAuth();
+  const currentUser = useRef(user?.id);
+  currentUser.current = user?.id;
   const loader = useCallback(
     async () => ({
       catalog: (await productService.list({ pageSize: 100 })).items,
       addresses: user ? await accountService.listAddresses(user.id) : [],
+      payment: checkout ? await paymentService.config() : { enabled: false },
+      attempt: checkout && user ? await paymentService.reconcile() : null,
     }),
-    [user],
+    [user, checkout],
   );
   const { data, loading, error, retry } = useResource(loader);
-  const [placed, setPlaced] = useState<Order | null>(null);
+  const [receipt, setPlaced] = useState<Order | null>(null);
+  const placed = receipt?.userId === user?.id ? receipt : null;
   const [submitting, setSubmitting] = useState(false);
   const [useNew, setUseNew] = useState(false);
+  const [attempt, setAttempt] = useState<PaymentAttempt | null>(null);
+  useEffect(() => {
+    setAttempt(data?.attempt ?? null);
+    if (data?.attempt?.status === "completed" && data.attempt.order) setPlaced(data.attempt.order);
+  }, [data]);
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} retry={retry} />;
   const products = data?.catalog || [];
   const addresses = data?.addresses || [];
   const activeAddress = useNew ? undefined : addresses[0];
+  const sandbox = data?.payment.enabled ?? false;
   const total = cartTotal(cart, products),
-    shipping = total >= 3000 ? 0 : 150;
+    shipping = checkoutShipping(total, cart);
+  const acceptOrder = async (order: Order) => {
+    if (!user || currentUser.current !== user.id || order.userId !== user.id) return;
+    setPlaced(order);
+    if (sandbox) window.dispatchEvent(new Event("elysian-session-change"));
+    else await clearCart();
+    notify(`Order ${order.id} placed.`);
+  };
+  const paymentFailure = async (failure: unknown) => {
+    if (currentUser.current !== user?.id) return;
+    if (sandbox) {
+      try { setAttempt(await paymentService.reconcile()); } catch { setAttempt({ status: "pending" }); }
+    }
+    if (currentUser.current !== user?.id) return;
+    notify(failure instanceof Error ? failure.message : "Your order could not be placed. Please try again.");
+  };
+  const resumePayment = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try { await acceptOrder(await paymentService.resume()); }
+    catch (failure) { await paymentFailure(failure); }
+    finally { setSubmitting(false); }
+  };
   const placeOrder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!user || submitting) return;
+    if (!user || submitting || attempt) return;
     const form = new FormData(event.currentTarget);
     const address = {
       name: activeAddress?.name || String(form.get("name") || ""),
@@ -59,15 +92,9 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
         items: cart,
         address,
       });
-      await clearCart();
-      setPlaced(order);
-      notify(`Order ${order.id} placed.`);
+      await acceptOrder(order);
     } catch (failure) {
-      notify(
-        failure instanceof Error
-          ? failure.message
-          : "Your order could not be placed. Please try again.",
-      );
+      await paymentFailure(failure);
     } finally {
       setSubmitting(false);
     }
@@ -83,6 +110,17 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
             : "Good things come to those who collect thoughtfully."
         }
       />
+      {!placed && attempt && (
+        <div className="demoNotice" role="status">
+          <span>{attempt.status === "reconciliation_required"
+            ? "Sandbox payment needs manual review. Do not retry payment."
+            : "Sandbox payment verification is pending. Check payment status before trying again."}</span>
+          <button className="textLink" onClick={retry}>Check payment status</button>
+          {attempt.status === "pending" && attempt.checkout && (
+            <button className="textLink" disabled={submitting} onClick={resumePayment}>Resume sandbox payment</button>
+          )}
+        </div>
+      )}
       {placed ? (
         <div className="successPanel" role="status">
           <Check size={34} />
@@ -102,9 +140,14 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
             ))}
           </ul>
           <div className="summaryLine total">
-            <span>Total paid</span>
+            <span>{sandbox ? "Sandbox total" : "Demo total"}</span>
             <span>{formatPrice(placed.total)}</span>
           </div>
+          <div className="summaryLine">
+            <span>Payment status</span>
+            <span>{sandbox ? "Verified sandbox payment" : "Recorded demo · no money charged"}</span>
+          </div>
+          {sandbox && <p className="muted">Sandbox only · no real money is charged.</p>}
           <Link className="button" to="/account/orders">
             View your orders
             <Arrow />
@@ -137,8 +180,10 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
               ) : (
                 <>
                   <div className="demoNotice">
-                    Demonstration checkout · no payment is taken and no card is
-                    stored. A real order is created in this browser.
+                    {sandbox ? "Razorpay sandbox · test mode only · no real money is charged." : <>
+                      Demonstration checkout · no payment is taken and no card is
+                      stored. A real order is created in this browser.
+                    </>}
                   </div>
                   <form className="checkoutForm" onSubmit={placeOrder}>
                     <h2>Where should your finds go?</h2>
@@ -234,15 +279,17 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
                     <div className="paymentPlaceholder">
                       <ShoppingBag size={20} />
                       <div>
-                        <h3>Payment is simulated.</h3>
+                        <h3>{sandbox ? "Payment uses test mode." : "Payment is simulated."}</h3>
                         <p>
-                          Placing this order records it against your account and
-                          creates a payment record. No money moves.
+                          {sandbox ? "Complete the sandbox checkout to verify your test payment. No money moves." : <>
+                            Placing this order records it against your account and
+                            creates a payment record. No money moves.
+                          </>}
                         </p>
                       </div>
                     </div>
-                    <button className="button" disabled={submitting || busy}>
-                      {submitting ? "Placing your order…" : "Place order"}
+                    <button className="button" disabled={submitting || busy || !!attempt}>
+                      {submitting ? "Placing your order…" : sandbox ? "Pay in sandbox" : "Place order"}
                       {!submitting && <Arrow />}
                     </button>
                   </form>

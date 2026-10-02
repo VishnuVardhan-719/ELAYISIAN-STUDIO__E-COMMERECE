@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000">
+  <rect width="800" height="1000" fill="#f5eee2"/>
+  <rect x="230" y="110" width="340" height="760" rx="8" fill="#d8c5a5"/>
+  <circle cx="400" cy="160" r="12" fill="#f5eee2"/>
+  <path d="M400 165Q455 45 500 70" fill="none" stroke="#6c7356" stroke-width="12"/>
+  <path d="M400 640V350M400 500Q300 440 325 360Q400 375 400 450M400 550Q505 480 475 390Q400 405 400 500" fill="#6c7356" stroke="#6c7356" stroke-width="4"/>
+  <text x="400" y="735" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="#463f33">ELYSIAN STUDIO</text>
+  <text x="400" y="788" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#463f33">EXPO DEMO BOOKMARK</text>
+</svg>

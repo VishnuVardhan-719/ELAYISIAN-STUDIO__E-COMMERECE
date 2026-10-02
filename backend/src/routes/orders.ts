@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth";
 import { HttpError } from "../middleware/errors";
+import { gatewayConfigured } from "../payments";
 import {
   createCheckout,
   getOrderById,
@@ -19,7 +20,7 @@ const orderQuerySchema = z
   })
   .refine((query) => !(query.userId && query.creatorId));
 
-const addressSchema = z.strictObject({
+export const addressSchema = z.strictObject({
   name: z.string().trim().min(1),
   line: z.string().trim().min(1),
   city: z.string().trim().min(1),
@@ -28,8 +29,7 @@ const addressSchema = z.strictObject({
   phone: z.string().regex(/^[6-9][0-9]{9}$/),
 });
 
-const checkoutSchema = z.strictObject({
-  userId: z.string().min(1),
+export const paymentCheckoutSchema = z.strictObject({
   items: z.array(
     z.strictObject({
       productId: z.string().min(1),
@@ -38,6 +38,8 @@ const checkoutSchema = z.strictObject({
   ),
   address: addressSchema,
 });
+
+const checkoutSchema = paymentCheckoutSchema.extend({ userId: z.string().min(1) });
 
 router.use("/orders", requireAuth);
 
@@ -85,6 +87,7 @@ router.get("/orders/:id", async (req, res) => {
 });
 
 router.post("/orders", async (req, res) => {
+  if (gatewayConfigured()) throw new HttpError(409, "Use verified sandbox checkout for this order.");
   const input = checkoutSchema.parse(req.body);
   if (input.userId !== req.user!.id)
     throw new HttpError(403, "You do not have access to this resource.");

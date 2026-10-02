@@ -7,6 +7,7 @@
     "dev": "vite frontend --host 0.0.0.0",
     "dev:api": "tsx watch backend/src/index.ts",
     "dev:all": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev\"",
+    "start": "tsx backend/src/index.ts",
     "build": "tsc -b frontend/tsconfig.json && vite build frontend",
     "preview": "vite preview frontend --host 0.0.0.0",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:api",
@@ -18,7 +19,9 @@
     "test:backend": "vitest run --project backend",
     "test:e2e": "playwright test --config frontend/playwright.config.ts",
     "seed": "tsx database/src/seed.ts",
-    "db:inspect": "node database/scripts/inspect-local-db.mjs"
+    "db:inspect": "node database/scripts/inspect-local-db.mjs",
+    "db:migrate:expo": "tsx database/scripts/migrate-expo.ts",
+    "db:prepare:expo": "tsx database/scripts/prepare-expo.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.2.0",

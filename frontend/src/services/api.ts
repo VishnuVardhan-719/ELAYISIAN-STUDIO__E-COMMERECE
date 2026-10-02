@@ -1,8 +1,17 @@
 import * as mock from "./mockAdapter";
 import * as rest from "./restAdapter";
+import { paymentService as payments } from "./paymentService";
 
 export { ApiError, apiRequest } from "./http";
 export type { AuthResult } from "./mockAdapter";
+export type { PaymentAttempt } from "./paymentService";
+export const paymentService = import.meta.env.VITE_API_MODE === "rest" ? payments : {
+  config: async () => ({ enabled: false, mode: "test" as const }),
+  reconcile: async () => null,
+  load: async () => {},
+  create: async (): Promise<never> => { throw new Error("Sandbox payments are disabled in demo mode."); },
+  resume: async (): Promise<never> => { throw new Error("Sandbox payments are disabled in demo mode."); },
+};
 
 const adapter = import.meta.env.VITE_API_MODE === "rest" ? rest : mock;
 export const {

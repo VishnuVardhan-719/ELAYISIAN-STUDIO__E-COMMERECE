@@ -16,6 +16,7 @@ import type {
   User,
 } from "../../frontend/src/types/domain";
 import {
+  checkoutShipping,
   filterProducts,
   normalizeCart,
   validateCollaboration,
@@ -534,10 +535,11 @@ async function performCheckout(
   if (!lines.length)
     throw new Error("None of these pieces are available any more.");
 
-  const total = lines.reduce(
+  const subtotal = lines.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
+  const total = subtotal + checkoutShipping(subtotal, lines);
   const orderIds = (await OrderModel.find().select("id").lean()).map(
     (entry) => (entry as unknown as { id: string }).id,
   );

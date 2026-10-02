@@ -216,7 +216,7 @@ describe("mongoose server store", () => {
       }),
     );
 
-    expect(order.total).toBe(before.price);
+    expect(order.total).toBe(before.price + 150);
     expect((await getProductById("sunset-vase"))?.stock).toBe(before.stock - 1);
     expect((await listPayments()).at(-1)).toMatchObject({
       id: "PAY-004",

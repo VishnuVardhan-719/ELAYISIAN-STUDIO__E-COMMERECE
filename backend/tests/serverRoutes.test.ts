@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import express from "express";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { env } from "../src/env";
 import adminRouter from "../src/routes/admin";
 import authRouter from "../src/routes/auth";
@@ -16,6 +16,8 @@ import { errorHandler, notFound } from "../src/middleware/errors";
 import { listAllProducts, listCollaborations, listCreators, listOrders, resetStore } from "../src/store";
 
 const TEST_URI = "mongodb://127.0.0.1:27017/elysian_test_routes";
+
+vi.mock("../src/env", () => ({ env: { jwtSecret: "isolated-route-test-key", jwtExpiresIn: "1h", razorpayKeyId: "", razorpayKeySecret: "", razorpayWebhookSecret: "" } }));
 
 let server: Server;
 let baseUrl: string;
@@ -431,7 +433,7 @@ describe("first API route slice", () => {
     expect(checkout.response.status).toBe(201);
     expect(checkout.body).toMatchObject({
       userId: "demo-customer",
-      total: before.price,
+      total: before.price + 150,
       status: "Processing",
     });
     expect((await request("/api/cart", { headers })).body).toEqual([]);
