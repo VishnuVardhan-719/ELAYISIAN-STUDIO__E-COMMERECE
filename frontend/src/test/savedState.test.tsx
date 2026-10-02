@@ -19,6 +19,26 @@ function SavePiece() {
 }
 
 describe("Session saved state", () => {
+  it.each([true, false])("preserves the saved bag when quick-add fails during refresh (failure first: %s)", async (failureFirst) => {
+    let finishRefresh!: (items: { productId: string; quantity: number }[]) => void;
+    let failAdd!: (error: Error) => void;
+    vi.spyOn(cartService, "get").mockImplementation(() => new Promise(resolve => { finishRefresh = resolve; }));
+    vi.spyOn(wishlistService, "get").mockResolvedValue([]);
+    vi.spyOn(cartService, "addItem").mockImplementation(() => new Promise((_resolve, reject) => { failAdd = reject; }));
+    render(<StudioProvider><ChangeBag /><SavedState /></StudioProvider>);
+    act(() => screen.getByRole("button", { name: "Add twice" }).click());
+    const saved = [{ productId: "sunset-vase", quantity: 2 }];
+    if (failureFirst) {
+      await act(async () => failAdd(new Error("Stock changed.")));
+      await act(async () => finishRefresh(saved));
+    } else {
+      await act(async () => finishRefresh(saved));
+      await act(async () => failAdd(new Error("Stock changed.")));
+    }
+    expect(screen.getByText("2 bag / 0 saved")).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Stock changed.");
+  });
+
   it("keeps a pending cart update when the wishlist changes", async () => {
     let finish!: (items: { productId: string; quantity: number }[]) => void;
     vi.spyOn(cartService, "get").mockResolvedValue([]);

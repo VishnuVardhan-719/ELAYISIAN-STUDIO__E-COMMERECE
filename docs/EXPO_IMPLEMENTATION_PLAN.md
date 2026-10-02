@@ -132,3 +132,18 @@ Preserve the existing design, service seam, public domain shapes and local data.
   the hosted update; no additional production redeploy was required.
 - Logs: `shopping-full-browser.log`, `shopping-browser-retry-final.log` and
   `shopping-completion-tests.log` under `.context/verification/`.
+
+### Cart-refresh revision follow-up
+
+- A read-only review found that `change` in `StudioContext` incremented the cart
+  revision before the request succeeded. A failed add during the initial saved
+  cart load therefore discarded the pending refresh, leaving an existing saved
+  bag invisible.
+- The revision now advances only after a successful mutation, so a failed
+  update cannot suppress saved-cart loading, while a completed update still wins
+  over an older in-flight refresh.
+- Two regression tests were observed failing (failure before and after the
+  refresh resolves) and then passing. Fresh full run: 228 tests across 21 files
+  passed, with lint, typecheck, production build and the three focused browser
+  checks passing. Logs: `cart-refresh-red.log`, `cart-refresh-green.log`,
+  `cart-refresh-release.log`, `cart-refresh-browser.log`.

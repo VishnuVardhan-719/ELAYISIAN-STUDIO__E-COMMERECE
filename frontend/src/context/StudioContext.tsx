@@ -83,11 +83,12 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     if (changingCart.current) return;
     changingCart.current = true;
     const current = savedRevision.current;
-    const currentCart = ++cartRevision.current;
+    const currentCart = cartRevision.current;
     setBusy(true);
     try {
       const next = await operation();
       if (current === savedRevision.current && currentCart === cartRevision.current) {
+        ++cartRevision.current;
         setCart(next);
         notify(message);
       }
