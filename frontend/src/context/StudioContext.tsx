@@ -41,6 +41,9 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     [busy, setBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const savedRevision = useRef(0);
+  const cartRevision = useRef(0);
+  const wishlistRevision = useRef(0);
+  const changingCart = useRef(false);
   const notify = useCallback((message: string) => {
     setNotice(message);
     clearTimeout(timer.current);
@@ -50,11 +53,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     let active = true;
     const refresh = () => {
       const current = ++savedRevision.current;
+      const currentCart = ++cartRevision.current;
+      const currentWishlist = ++wishlistRevision.current;
       Promise.all([cartService.get(), wishlistService.get()])
         .then(([savedCart, savedWishlist]) => {
           if (!active || current !== savedRevision.current) return;
-          setCart(savedCart);
-          setWishlist(savedWishlist);
+          if (currentCart === cartRevision.current) setCart(savedCart);
+          if (currentWishlist === wishlistRevision.current) setWishlist(savedWishlist);
         })
         .catch(() => {
           if (active && current === savedRevision.current) notify("Your saved bag could not be loaded.");
@@ -75,17 +80,25 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     operation: () => Promise<CartItem[]>,
     message: string,
   ) => {
+    if (changingCart.current) return;
+    changingCart.current = true;
+    const current = savedRevision.current;
+    const currentCart = ++cartRevision.current;
     setBusy(true);
     try {
-      setCart(await operation());
-      notify(message);
+      const next = await operation();
+      if (current === savedRevision.current && currentCart === cartRevision.current) {
+        setCart(next);
+        notify(message);
+      }
     } catch (error) {
-      notify(
+      if (current === savedRevision.current) notify(
         error instanceof Error
           ? error.message
           : "Your bag could not be updated. Please try again.",
       );
     } finally {
+      changingCart.current = false;
       setBusy(false);
     }
   };
@@ -105,11 +118,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     clearCart: () =>
       change(() => cartService.clear(), "Your bag is empty again."),
     toggleWishlist: (id) => {
-      savedRevision.current++;
+      const current = savedRevision.current;
+      const currentWishlist = ++wishlistRevision.current;
       const exists = wishlist.includes(id);
       const next = exists ? wishlist.filter((i) => i !== id) : [...wishlist, id];
       setWishlist(next);
       wishlistService.set(next).catch((error: unknown) => {
+        if (current !== savedRevision.current || currentWishlist !== wishlistRevision.current) return;
         setWishlist(wishlist);
         notify(error instanceof Error ? error.message : "Your saved bag could not be loaded.");
       });

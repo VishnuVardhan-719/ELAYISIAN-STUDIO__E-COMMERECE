@@ -37,6 +37,7 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
   const placed = receipt?.userId === user?.id ? receipt : null;
   const [submitting, setSubmitting] = useState(false);
   const [useNew, setUseNew] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>();
   const [attempt, setAttempt] = useState<PaymentAttempt | null>(null);
   useEffect(() => {
     setAttempt(data?.attempt ?? null);
@@ -46,7 +47,7 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
   if (error) return <ErrorState message={error} retry={retry} />;
   const products = data?.catalog || [];
   const addresses = data?.addresses || [];
-  const activeAddress = useNew ? undefined : addresses[0];
+  const activeAddress = useNew ? undefined : addresses.find((address) => address.id === selectedAddressId) ?? addresses[0];
   const sandbox = data?.payment.enabled ?? false;
   const total = cartTotal(cart, products),
     shipping = checkoutShipping(total, cart);
@@ -196,7 +197,8 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
                               key={address.id}
                               type="button"
                               className={`addressChoice ${activeAddress?.id === address.id ? "addressChoiceActive" : ""}`}
-                              onClick={() => setUseNew(false)}
+                              aria-pressed={activeAddress?.id === address.id}
+                              onClick={() => { setSelectedAddressId(address.id); setUseNew(false); }}
                             >
                               <strong>{address.name}</strong>
                               <span>
@@ -209,6 +211,7 @@ export default function Cart({ checkout = false }: { checkout?: boolean }) {
                           <button
                             type="button"
                             className={`addressChoice ${useNew ? "addressChoiceActive" : ""}`}
+                            aria-pressed={useNew}
                             onClick={() => setUseNew(true)}
                           >
                             <strong>Use a new address</strong>

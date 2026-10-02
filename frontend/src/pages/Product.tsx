@@ -69,7 +69,9 @@ function ProductContent({
   const [active, setActive] = useState(0),
     [quantity, setQuantity] = useState(1),
     [zoom, setZoom] = useState(false);
-  const { wishlist, toggleWishlist, addToCart, busy } = useStudio();
+  const { cart, wishlist, toggleWishlist, addToCart, busy } = useStudio();
+  const remaining = Math.max(0, p.stock - (cart.find((item) => item.productId === p.id)?.quantity ?? 0));
+  const safeQuantity = Math.min(quantity, remaining);
   const creator = creators.find((c) => c.id === p.creatorId);
   const saved = wishlist.includes(p.id);
   return (
@@ -128,22 +130,22 @@ function ProductContent({
           <p className={`availability ${p.stock === 0 ? "unavailable" : ""}`}>
             <span />
             {p.stock > 0
-              ? `${p.stock} available · Made in small batches`
+              ? remaining === 0 ? "All available pieces are in your bag" : `${p.stock} available · Made in small batches`
               : "Currently unavailable"}
           </p>
           <div className="buyRow">
             <Quantity
-              value={quantity}
-              max={p.stock}
+              value={safeQuantity}
+              max={remaining}
               onChange={setQuantity}
-              disabled={p.stock === 0 || busy}
+              disabled={remaining === 0 || busy}
             />
             <button
               className="button"
-              disabled={p.stock === 0 || busy}
-              onClick={() => addToCart(p.id, quantity)}
+              disabled={remaining === 0 || busy}
+              onClick={() => addToCart(p.id, safeQuantity)}
             >
-              {p.stock === 0 ? "Sold out" : busy ? "Adding…" : "Add to bag"}
+              {p.stock === 0 ? "Sold out" : remaining === 0 ? "Stock limit reached" : busy ? "Adding…" : "Add to bag"}
               <Arrow />
             </button>
             <button

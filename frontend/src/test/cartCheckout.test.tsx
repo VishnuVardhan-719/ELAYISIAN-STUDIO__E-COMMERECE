@@ -24,6 +24,10 @@ const order = {
   items: [{ productId: "expo-demo-bookmark", name: "Expo bookmark", quantity: 1, unitPrice: 1 }], total: 1,
 };
 const mount = () => render(<MemoryRouter><Cart checkout /></MemoryRouter>);
+const savedAddresses = [
+  { id: "first", userId: user.id, name: "Customer", line: "Studio road", city: "Mumbai", state: "Maharashtra", postalCode: "400001", phone: "9876543210" },
+  { id: "second", userId: user.id, name: "Second recipient", line: "Craft lane", city: "Pune", state: "Maharashtra", postalCode: "411001", phone: "9876543211" },
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,6 +41,63 @@ beforeEach(() => {
 });
 
 describe("checkout payment labels and totals", () => {
+  it("submits the second saved address rather than the first", async () => {
+    mocks.addresses.mockResolvedValue(savedAddresses);
+    const { container } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: /Second recipient Craft lane/ }));
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({ userId: user.id, items: mocks.cart, address: {
+      name: "Second recipient", line: "Craft lane", city: "Pune", state: "Maharashtra", postalCode: "411001", phone: "9876543211",
+    } }));
+  });
+
+  it("selects the second saved address and can reselect it after using a new address", async () => {
+    mocks.addresses.mockResolvedValue(savedAddresses);
+    const { container } = mount();
+    const first = await screen.findByRole("button", { name: /Customer Studio road/ });
+    const second = screen.getByRole("button", { name: /Second recipient Craft lane/ });
+    const newAddress = screen.getByRole("button", { name: /Use a new address/ });
+    expect(first).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(second);
+    expect(second).toHaveAttribute("aria-pressed", "true");
+    expect(first).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(newAddress);
+    expect(newAddress).toHaveAttribute("aria-pressed", "true");
+    expect(second).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("textbox", { name: "Full name" })).toBeVisible();
+    fireEvent.click(second);
+    expect(second).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("textbox", { name: "Full name" })).not.toBeInTheDocument();
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ address: expect.objectContaining({ line: "Craft lane" }) })));
+  });
+
+  it("submits the entered new address instead of the selected saved address", async () => {
+    mocks.addresses.mockResolvedValue(savedAddresses);
+    const { container } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: /Second recipient Craft lane/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Use a new address/ }));
+    const fields = { "Full name": "New recipient", "Email address": "new@example.test", Address: "New delivery road", City: "Jaipur", State: "Rajasthan", "PIN code": "302001", "Phone number": "9876543212" };
+    for (const [name, value] of Object.entries(fields)) fireEvent.change(screen.getByRole("textbox", { name }), { target: { value } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({ userId: user.id, items: mocks.cart, address: {
+      name: "New recipient", line: "New delivery road", city: "Jaipur", state: "Rajasthan", postalCode: "302001", phone: "9876543212",
+    } }));
+  });
+
+  it("falls back to the first remaining address when the selected address is removed", async () => {
+    mocks.addresses.mockResolvedValue(savedAddresses);
+    const { rerender, container } = mount();
+    fireEvent.click(await screen.findByRole("button", { name: /Second recipient Craft lane/ }));
+    mocks.addresses.mockResolvedValue([savedAddresses[0]]);
+    rerender(<MemoryRouter><Cart /></MemoryRouter>);
+    await screen.findByRole("heading", { name: "Your thoughtful finds." });
+    rerender(<MemoryRouter><Cart checkout /></MemoryRouter>);
+    expect(await screen.findByRole("button", { name: /Customer Studio road/ })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ address: expect.objectContaining({ line: "Studio road" }) })));
+  });
+
   it("offers resume only when the server confirms an unpaid resumable checkout", async () => {
     mocks.reconcile.mockResolvedValue({ status: "pending", checkout: { attemptId: "attempt-1" } });
     mount();

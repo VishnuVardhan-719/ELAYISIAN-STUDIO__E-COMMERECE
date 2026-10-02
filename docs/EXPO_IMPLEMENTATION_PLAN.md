@@ -100,3 +100,20 @@ Preserve the existing design, service seam, public domain shapes and local data.
 - Failure/cancellation paths pass automated tests but have not received a complete
   hosted provider rehearsal. Free-tier idle startup and venue connectivity remain
   operational limitations; there is no live-payment or uptime guarantee.
+
+## Shopping basics follow-up
+
+- Added product-card Add to bag, loading/error feedback, stock limits, bag counts
+  and a View bag link using the existing cart service and design tokens.
+- Corrected checkout so the selected saved address, not always the first address,
+  is submitted. New-address input remains available.
+- Product-detail quantities account for pieces already in the bag.
+- Guarded duplicate cart mutations and separated cart/wishlist request revisions
+  so an overlapping wishlist change cannot discard a successful cart update.
+- Observed failing regression tests before the fixes. Full automated run:
+  226 tests across 21 files passed. Three focused browser checks passed at
+  390px/1440px, including guest persistence and remaining-stock limits.
+- Research references: Shopify Dawn `snippets/card-product.liquid` quick-add
+  states and W3C Understanding SC 4.1.3 Status Messages. No external template
+  or additional dependencies were introduced.
+- Hosted deployment and hosted shopping checks are pending for this follow-up.

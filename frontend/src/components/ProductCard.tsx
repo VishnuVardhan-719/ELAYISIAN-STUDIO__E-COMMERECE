@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
 import type { Creator, Product } from "../types/domain";
 import { formatPrice } from "../utils/commerce";
 import { useStudio } from "../context/StudioContext";
@@ -11,8 +12,18 @@ export function ProductCard({
   product: Product;
   creator?: Creator;
 }) {
-  const { wishlist, toggleWishlist } = useStudio();
+  const { wishlist, toggleWishlist, cart, addToCart, busy } = useStudio();
+  const [adding, setAdding] = useState(false);
   const saved = wishlist.includes(product.id);
+  const inBag = cart.find((item) => item.productId === product.id)?.quantity ?? 0;
+  const unavailable = product.status !== "active" || product.stock <= 0;
+  const atLimit = !unavailable && inBag >= product.stock;
+  const add = async () => {
+    if (busy || adding || unavailable || atLimit) return;
+    setAdding(true);
+    try { await addToCart(product.id, 1); }
+    finally { setAdding(false); }
+  };
   return (
     <article className={styles.card}>
       <div className={styles.visual}>
@@ -60,6 +71,18 @@ export function ProductCard({
           <span>{formatPrice(product.price)}</span>
         </div>
         <p className={styles.meta}>{product.material.split(",")[0]}</p>
+        <button
+          type="button"
+          className={`button secondary ${styles.add}`}
+          disabled={busy || adding || unavailable || atLimit}
+          aria-busy={adding}
+          aria-label={unavailable ? `${product.name} is currently unavailable` : atLimit ? `Stock limit reached for ${product.name}` : `Add ${product.name} to bag`}
+          onClick={add}
+        >
+          <ShoppingBag size={16} aria-hidden="true" />
+          {unavailable ? "Sold out" : atLimit ? "Stock limit reached" : adding ? "Adding…" : "Add to bag"}
+        </button>
+        {inBag > 0 && <div className={styles.bag}><Link to="/cart">View bag</Link><span>{inBag} in bag</span></div>}
       </div>
     </article>
   );
