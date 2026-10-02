@@ -5,6 +5,22 @@
 **Project category:** Database Systems Engineering project
 
 **Documentation snapshot:** October 2, 2026
+
+### Deployment checkpoint
+
+The expo branch now includes Razorpay sandbox checkout, a ₹1 demo product,
+three private role accounts, single-origin hosting support and a verified copy
+of the local database in Atlas `elysian_expo`. The local source was preserved.
+
+A free Render service has been created, and its cloud builds succeed. The
+service is **not yet verified online**: startup currently times out connecting
+to Atlas. The next step is to check the Atlas project's network access list
+against the service's outbound ranges, then redeploy and verify the hosted flow.
+Opening the actual sandbox checkout has been verified; a completed provider
+payment and hosted cross-role order rehearsal remain pending. The endpoint for
+signed webhooks exists, but registration in Razorpay's dashboard is not verified.
+
+See `EXPO_IMPLEMENTATION_PLAN.md` for current evidence and release limitations.
 **Audience:** Expo evaluators, faculty, students and project maintainers
 
 > **Crafted with Soul, Wrapped in Emotion**

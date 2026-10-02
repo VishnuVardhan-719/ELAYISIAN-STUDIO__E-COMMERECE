@@ -72,4 +72,17 @@ Preserve the existing design, service seam, public domain shapes and local data.
 - Review fixes verified: per-owner durable payment recovery, session-bound
   callbacks, fail-closed recovery storage, transaction finalisation and preserved
   unrelated cart items.
-- Render credentials authenticate; no service created yet. Deployment pending.
+- Tested feature branch published; `main` remains unchanged.
+- Render free service `elysian-studio-expo` created with private configuration.
+  Cloud builds succeed; startup fails with a database connection timeout.
+  Hosted credentials match local settings and local production connects to Atlas.
+- Current deployment blocker: verify Atlas network access permits Render outbound
+  CIDRs `74.220.52.0/24` and `74.220.60.0/24`. The user must configure these in
+  Atlas Network Access; no Atlas project-management credentials were supplied.
+- Safe startup diagnostics added and verified with three focused tests; no raw
+  exception messages, secrets or connection strings are logged on startup failure.
+- Final full automated run: 201 tests across 18 files passed, including startup
+  diagnostics. The remaining blocker is provider configuration, not a failing
+  automated test. Neither failed cloud deployment is reported as live.
+- Hosted readiness, completed provider sandbox payment and webhook registration
+  remain unverified. Do not present this as a finished hosted payment release.
