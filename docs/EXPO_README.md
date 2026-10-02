@@ -12,13 +12,16 @@ The expo branch now includes Razorpay sandbox checkout, a ₹1 demo product,
 three private role accounts, single-origin hosting support and a verified copy
 of the local database in Atlas `elysian_expo`. The local source was preserved.
 
-A free Render service has been created, and its cloud builds succeed. The
-service is **not yet verified online**: startup currently times out connecting
-to Atlas. The next step is to check the Atlas project's network access list
-against the service's outbound ranges, then redeploy and verify the hosted flow.
-Opening the actual sandbox checkout has been verified; a completed provider
-payment and hosted cross-role order rehearsal remain pending. The endpoint for
-signed webhooks exists, but registration in Razorpay's dashboard is not verified.
+A free Render service is now live at
+`https://elysian-studio-expo.onrender.com`. Its public health endpoint reports
+Atlas connected. Customer, creator and admin logins were checked on the hosted
+site, including refreshed dashboards and direct product navigation.
+An actual hosted INR 1 Razorpay test payment completed through Netbanking and the
+mock bank's Success button. The app displayed its verified receipt; stock fell
+from 100 to 99, and repeated reconciliation returned the same order. Hosted API
+checks confirmed creator/admin order visibility and the admin payment record.
+No real money was charged. The endpoint for signed webhooks exists, but registration
+in Razorpay's dashboard and hosted webhook delivery are not verified.
 
 See `EXPO_IMPLEMENTATION_PLAN.md` for current evidence and release limitations.
 **Audience:** Expo evaluators, faculty, students and project maintainers
@@ -45,7 +48,7 @@ Elysian Studio is a full-stack demonstration of a handmade marketplace. It conne
 
 Customers can browse products, manage a bag and wishlist, place simulated orders and view their account history. Creators can create and edit products and view orders containing their work. Administrators can inspect marketplace records, monitor low stock and review collaboration applications. The backend validates requests and checks authentication, roles and resource ownership.
 
-The project demonstrates how interface actions become API requests and persistent database operations. Its catalogue and creator profiles are illustrative. Atlas migration and Razorpay sandbox integration code are implemented. A real sandbox checkout modal has opened, but a captured test payment and successful end-to-end finalisation have not yet been verified. Render is configured and deployment is pending; no live money collection is claimed.
+The project demonstrates how interface actions become API requests and persistent database operations. Its catalogue and creator profiles are illustrative. Atlas migration and Razorpay sandbox integration are implemented. An actual captured test payment produced a verified hosted order and stock change through payment-status reconciliation. Render is live and connected to Atlas; no live money collection is claimed.
 
 ## 2. Current Status: Built Versus Planned
 
@@ -61,9 +64,9 @@ The project demonstrates how interface actions become API requests and persisten
 | Collaboration submission and admin review | Implemented |
 | Order creation, stock reduction and sample payment record | Implemented with simulated payment |
 | Browser-only mock adapter | Implemented as an alternative mode |
-| Public Render deployment | Single-service configuration ready; deployment pending |
+| Public Render deployment | Live free service; public health, role logins and dashboard refresh verified |
 | MongoDB Atlas migration | Ten original collections and 41 documents migrated and verified; backup and local source preserved |
-| Razorpay sandbox integration | Implemented and tested with mocked provider calls against isolated MongoDB; real modal opened, captured-payment success not yet verified |
+| Razorpay sandbox integration | Hosted INR 1 test payment captured and finalised; receipt, stock change and repeated reconciliation verified |
 | INR 1 expo demo product with zero shipping | Added; cloud catalogue has 13 products |
 | Three new private expo accounts | Created with fictional emails and strong passwords; cloud has six users |
 | Real money collection | Outside the selected sandbox expo scope |
@@ -262,7 +265,7 @@ Admin analysis uses aggregation stages such as `$facet`, `$unwind`, `$lookup`, `
 
 Frontend route protection improves navigation, but backend checks provide the access-control boundary. The current browser session uses local storage; this is not a hardened cookie-based production session design.
 
-### Shopping and current simulated checkout
+### Legacy simulated checkout when gateway keys are absent
 
 1. The customer discovers an active product and selects an available quantity.
 2. The bag stores product IDs and quantities. Signed-in state persists in MongoDB.
@@ -284,7 +287,7 @@ On standalone MongoDB, legacy simulated checkout uses compensating rollback for 
 4. Verification or a signed raw-body webhook finalises stock, order, payment and bag changes in a transaction. Duplicate finalisation is idempotent.
 5. A captured payment that cannot be fulfilled records `reconciliation_required` without a successful order or partial stock changes.
 
-These paths pass isolated integration tests. Opening the actual sandbox modal has been verified, but provider success/failure/pending flows and a captured test payment have not yet completed end-to-end verification.
+These paths pass isolated integration tests. Hosted Netbanking sandbox success has also been verified: payment-status reconciliation finalised the INR 1 order, the browser displayed its receipt, and creator/admin API checks returned it. Real hosted webhook delivery and a complete provider failure/cancellation rehearsal remain unverified.
 
 ### Creator product management
 
@@ -408,12 +411,13 @@ The current results below were reported by the implementation lead on October 2,
 | Evidence | Recorded result | Qualification |
 | --- | --- | --- |
 | September 30, 2026 reorganisation | Typecheck, lint and frontend build passed | Reported in repository validation records |
-| Current unit/integration suite | 198 tests passed | Payment provider calls mocked; payment transaction tests use real isolated MongoDB |
+| Current unit/integration suite | 201 tests across 18 files passed | Payment provider calls mocked; payment transaction tests use real isolated MongoDB |
 | Current static checks and build | Typecheck, lint and frontend build passed | Current implementation verification |
 | Current browser suite | 24 of 25 passed; the failed desktop assertion passed a focused one-test retry | Not one uninterrupted 25/25 green run |
 | Atlas migration | Ten original collections, 41 documents verified | Backup and local source preserved; cloud preparation brings catalogue/users to 13/six |
-| Real Razorpay sandbox browser check | Actual checkout modal opened | No captured test payment or successful finalisation verified yet |
-| Render | Single free web service configured | Deployment and public availability pending |
+| Real Razorpay sandbox browser check | Netbanking mock-bank Success produced a completed INR 1 order and receipt | Stock 100 to 99; repeated reconciliation returns the same order; no real money |
+| Hosted cross-role API checks | Creator/admin see the order; admin sees the payment record | Authenticated API checks, not a single continuous cross-role UI rehearsal |
+| Render | Live free service, Atlas health and three role logins verified | Mobile-data venue rehearsal still needed; dashboard webhook registration unverified |
 | Focused REST browser flows | Bag merge, persistence, wishlist and account isolation passed | Historical focused runs |
 | Earlier expo-readiness inspection | Lint, backend/database typecheck and read-only database inspection passed | No fresh browser checkout performed |
 | Earlier build attempts | Tool timed out after 30 seconds | Superseded by the current successful build; retained as historical context |
@@ -426,23 +430,23 @@ No performance benchmark, uptime guarantee, complete security audit or live-paym
 
 ## 14. Known Limitations and Required Corrections
 
-1. **Actual sandbox finalisation remains unverified.** Gateway calls, signature verification and signed webhook handling are implemented. Isolated tests pass and the real modal opened, but no captured provider payment has yet produced a verified end-to-end success.
-2. **Totals are aligned in code and tests, not yet through a captured provider payment.** Shared shipping rules and server-calculated paise include zero shipping for the expo-only product; complete the actual sandbox rehearsal before claiming provider success.
+1. **Hosted webhook registration remains unverified.** The INR 1 sandbox success flow passed using payment-status reconciliation. Signed webhook handling passes isolated tests, but dashboard registration and real hosted webhook delivery are not confirmed.
+2. **Provider failure/cancellation rehearsal is incomplete.** Automated tests cover these paths. Hosted success totals matched at INR 1 with zero shipping; a complete hosted failure/cancellation rehearsal is still needed.
 3. **Delivery details are not an order snapshot.** Checkout validates an address, but the order schema does not store that address or an address ID. Separate saved addresses do not solve historical order delivery tracking.
-4. **Legacy local compensation is not crash-safe.** Standalone rollback handles caught failures but can fail or expose intermediate changes. Sandbox transactions pass isolated replica-set tests; deployed-provider verification remains pending.
+4. **Legacy local compensation is not crash-safe.** Standalone rollback handles caught failures but can fail or expose intermediate changes. The sandbox transaction path passes isolated replica-set tests and a hosted captured-payment finalisation; legacy local checkout still has this limitation.
 5. **Multi-process scaling needs review.** The checkout queue and sequential application-ID generation are not distributed coordination mechanisms.
 6. **Policies describe an educational demo.** Information-page copy was updated for REST persistence and sandbox use; this is not reviewed commercial legal or privacy compliance.
 7. **No complete creator onboarding automation.** Application approval does not provision accounts, link a profile or change roles automatically.
 8. **No real delivery, email, refunds or remote uploads.** Displayed order statuses and image fields do not establish those integrations.
 9. **Search is suitable for the demo, not proven at scale.** Current filtering loads data for shared application-side processing.
-10. **Public deployment is pending.** Cloud seeded login hashes were rotated, private expo accounts created, and production JWT/sandbox guards and basic auth rate limits added. Token handling, cloud permissions and abuse protection still require operational review; these changes are not a full security audit.
+10. **Free hosting is not an uptime guarantee.** Public deployment and role logins are verified. Cloud seeded login hashes were rotated, private expo accounts created, and production JWT/sandbox guards and basic auth rate limits added. Token handling, cloud permissions and abuse protection still require operational review; these changes are not a full security audit.
 11. **Entrance accessibility exception.** The entrance animation intentionally plays even with reduced motion enabled; it can be skipped. Do not claim every animation respects reduced motion.
 
 These boundaries are part of an honest engineering presentation, not evidence that every workflow is unfinished.
 
 ## 15. Expo Implementation: Render, Atlas and Razorpay Sandbox
 
-**Atlas migration, expo preparation, hosting code and sandbox integration are implemented. Render deployment and an actual captured sandbox payment remain pending.**
+**Atlas migration, expo preparation, hosting and sandbox integration are implemented. Render is live; an actual captured INR 1 sandbox payment has produced a verified receipt and persisted order.**
 
 ```text
 Visitor browser
@@ -458,11 +462,11 @@ Render web service: built React assets + Express API
 
 `render.yaml` configures one free Render web service. Express serves the built React assets and relative `/api` requests on one origin, including browser-route refresh fallback while missing assets return `404`. `.node-version` pins Node 22.22.0. Build is `npm ci --include=dev && npm run build`; start is `npm start`.
 
-The configuration uses private/generated environment secrets, `/api/health` and the host-provided port. Public deployment has not yet been verified independently of the team's laptop. Free Render services can sleep after fifteen idle minutes and have an ephemeral filesystem; do not describe that tier as continuously warm or use it to store MongoDB data. Provider reference: [1] in Section 21.
+The configuration uses private/generated environment secrets, `/api/health` and the host-provided port. Public HTTPS checks against the hosted service report a connected database; the application does not depend on a laptop development server. Mobile-data venue rehearsal is still needed. Free Render services can sleep after fifteen idle minutes and have an ephemeral filesystem; do not describe that tier as continuously warm or use it to store MongoDB data. Provider reference: [1] in Section 21.
 
 ### Completed cloud migration
 
-The separate Atlas expo database received all ten original collections and 41 documents without reseeding. Migration verification passed, and the backup and local source were preserved. Expo preparation added the INR 1 product and three private role accounts, bringing cloud products to 13 and users to six. The sandbox flow adds the internal `paymentattempts` collection. Hosted network access and deployment-specific persistence still need final verification. Provider reference: [2] in Section 21.
+The separate Atlas expo database received all ten original collections and 41 documents without reseeding. Migration verification passed, and the backup and local source were preserved. Expo preparation added the INR 1 product and three private role accounts, bringing cloud products to 13 and users to six before browser rehearsals added disposable customers. The sandbox flow adds the internal `paymentattempts` collection. Atlas network access now permits the Render service, and hosted logins confirm database access. Provider reference: [2] in Section 21.
 
 ### Implemented sandbox payment paths
 
@@ -472,9 +476,9 @@ The separate Atlas expo database received all ten original collections and 41 do
 - The backend verifies signature, amount, currency, ownership, gateway order and capture status before finalisation. Provider reference: [4] in Section 21.
 - Signed raw-body webhooks and idempotent finalisation support retry recovery; captured stock failures persist `reconciliation_required`.
 - Gateway identifiers and attempt states are stored separately from public domain shapes.
-- Mocked provider tests cover finalisation and rejection/retry paths on isolated MongoDB. Real provider success, failure and pending flows remain to be rehearsed; opening the real modal is not payment completion.
+- Mocked provider tests cover finalisation and rejection/retry paths on isolated MongoDB. An actual hosted provider success was verified through Netbanking and its mock bank's Success button. Provider failure/cancellation and hosted webhook delivery are not fully rehearsed.
 
-The public `Payment` status remains `Recorded demo`; the method distinguishes sandbox-verified records. Internal attempt states are `pending`, `completed` and `reconciliation_required`. No captured real-provider success is claimed in this snapshot.
+The public `Payment` status remains `Recorded demo`; the method distinguishes sandbox-verified records. Internal attempt states are `pending`, `completed` and `reconciliation_required`. The hosted success produced a `completed` attempt, an INR 1 order, and one stock decrement. Repeated reconciliation returned that same order. This is Razorpay sandbox success, not a real bank debit.
 
 ### Credentials and private expo accounts
 
@@ -485,25 +489,25 @@ Three private accounts with fictional emails, strong separate passwords and expl
 ### Acceptance checks before claiming completion
 
 - [ ] Render website opens over HTTPS on mobile data with local servers stopped.
-- [ ] Direct navigation and refresh work on product and dashboard routes.
+- [x] Direct navigation and refresh work on product and dashboard routes.
 - [ ] Data persists across browser sessions and hosting restarts.
 - [ ] Backend checks prevent unauthorised role and ownership access.
-- [ ] UI total, backend total and gateway amount agree.
-- [ ] Sandbox success produces one verified attempt and one finalised order.
+- [x] UI total, backend total and gateway amount agree for the INR 1 demo.
+- [x] Sandbox success produces one verified attempt and one finalised order.
 - [ ] Failure/cancellation does not create a successful order or consume stock permanently.
 - [ ] Repeated callbacks/webhooks do not duplicate orders or stock changes.
-- [ ] An interrupted successful payment can be reconciled.
+- [x] Hosted payment-status reconciliation finalises the captured demo payment; repeated reads preserve the same order and stock.
 - [ ] No secrets or working privileged passwords are exposed in public files.
 - [ ] Fresh tests and a full rehearsal support the final status table.
 
 ## 16. Expo Presentation: Six-Minute Demonstration
 
-Use a rehearsed local demo unless deployment has passed its acceptance checks. Sandbox keys disable legacy simulated checkout, so choose the intended mode beforehand. The actual modal opened, but do not present captured-payment success until that flow has been verified.
+Use the hosted demo after checking venue connectivity; retain a local backup and recording. Sandbox keys disable legacy simulated checkout. Hosted INR 1 success is verified; rehearse the specific bank-selection sequence before presenting and do not describe it as real money collection.
 
 | Time | Action | Point to explain |
 | --- | --- | --- |
 | 0:00-0:30 | Open homepage and briefly show the entrance | Problem, target users and project purpose |
-| 0:30-2:00 | Customer: find a product, bag, simulated checkout | Complete customer journey |
+| 0:30-2:00 | Customer: find the INR 1 product, bag, Razorpay sandbox checkout | Complete customer journey; no real money |
 | 2:00-3:00 | Creator: refresh matching orders and show products | Creator ownership and persisted data |
 | 3:00-4:00 | Admin: refresh order view and show low-stock/application review | Shared records and oversight |
 | 4:00-5:30 | Show architecture, logical ER diagram and one MongoDB order | Backend and database evidence |
@@ -516,7 +520,7 @@ Use a rehearsed local demo unless deployment has passed its acceptance checks. S
 ### The order demonstration
 
 1. Choose a stocked product belonging to the creator account used in the demo.
-2. Sign in as the customer, purchase one unit through the current simulated checkout and note the order ID.
+2. Sign in as the customer and select one INR 1 Expo Demo Bookmark. In Razorpay test checkout choose Netbanking, select Canara Bank, then choose Success on the mock bank page. Note the order ID after verification. This is the sequence used in the hosted rehearsal; no real bank login or debit is needed.
 3. Show that order in customer history.
 4. Refresh the creator order view and identify the matching line.
 5. Refresh the admin order view and locate the same order ID.
@@ -527,15 +531,15 @@ Use separate browser profiles or different browsers for independent role session
 
 Current-payment statement:
 
-> This checkout records an order and a simulated payment. No money is charged.
+> This checkout uses Razorpay's sandbox. The backend verifies the payment and stores the order in Atlas. No real money is charged.
 
 For the implemented sandbox mode, state its current evidence boundary:
 
-> This checkout opens Razorpay's test environment. Verification and finalisation pass isolated tests, but an actual captured test-payment success has not yet been verified. No real money moves.
+> We verified an INR 1 test purchase on the hosted site, including its receipt, stock change and creator/admin order visibility. Hosted webhook delivery is not yet verified; payment-status reconciliation worked. No real money moves.
 
 ### Closing script
 
-> The project demonstrates a connected marketplace rather than isolated screens: customer actions reach the API, update persistent records and become visible to the relevant roles. Atlas migration and sandbox integration code are complete. Public deployment and actual captured-payment verification remain pending, and legacy standalone checkout has reliability limits.
+> The project demonstrates a connected marketplace: customer actions reach the API, update Atlas records and become visible to the relevant roles. The hosted Razorpay sandbox purchase produced a verified order and stock change. No real money was collected. Live payments, webhook deployment verification and production operations remain future work.
 
 ## 17. Rehearsal and Backup Checklist
 
@@ -586,11 +590,11 @@ Checkout uses conditional updates matching active products with sufficient stock
 
 ### Is checkout a transaction?
 
-Legacy simulated checkout on standalone MongoDB uses compensation, not a crash-safe transaction. Sandbox finalisation requires transaction-capable MongoDB and passes isolated replica-set integration tests with mocked provider calls. Actual provider and deployed end-to-end verification remain pending.
+Legacy simulated checkout on standalone MongoDB uses compensation, not a crash-safe transaction. Sandbox finalisation requires transaction-capable MongoDB and passes isolated replica-set integration tests with mocked provider calls. A captured Razorpay test payment also finalised successfully on the hosted Atlas setup, with stock changed once.
 
 ### Does payment actually charge a bank account?
 
-No. Razorpay sandbox integration is implemented, but test mode does not move real money. The actual modal opened; a captured test payment has not yet been verified. This is not live payment collection.
+No. Razorpay test mode does not move real money. An INR 1 test payment was captured and verified on the hosted app, producing an order and receipt, but this is not a real bank debit or live payment collection.
 
 ### Can the creator see every customer's entire order?
 
@@ -600,13 +604,13 @@ The creator order view is authorised for the linked creator and filters to match
 
 Its saved status changes. Automatic account/profile provisioning and role promotion are not implemented by that operation.
 
-### Will the planned site work without your laptop?
+### Does the hosted site need your laptop server?
 
-That remains a deployment acceptance condition, not a completed claim. Atlas data migration is verified and Render is configured, but public deployment must still be tested with local servers stopped.
+The public service runs its own Express process on Render and connects to Atlas, rather than calling a laptop development API. Public health, logins and sandbox checkout were verified at the Render address. A phone/mobile-data check with local servers stopped is still part of the venue rehearsal.
 
 ### What did testing prove?
 
-The current 198 passing unit/integration tests exercise frontend behaviour, API access, persistence, hosting and mocked-provider sandbox transaction paths on isolated MongoDB. Typecheck, lint and build pass. Browser coverage is 24/25 plus one passing focused retry, not a full green single run. These checks do not establish captured provider payment success, public deployment, unlimited scale or complete security.
+The recorded full suite has 201 passing unit/integration tests across 18 files, including startup diagnostics. Typecheck, lint and build pass. Browser coverage is 24/25 plus one passing focused retry, not a full green single run. Separate hosted checks verified deployment, role logins and an actual captured sandbox payment; they do not establish unlimited scale, real bank settlement or complete security.
 
 ## 19. Suggested Expo Report Structure
 
@@ -635,7 +639,7 @@ Saved screenshots illustrate the interface, not proof of deployment:
 
 ### Remaining expo verification
 
-Atlas migration, three private role accounts, the INR 1 sandbox product, consistent totals, production route serving and sandbox integration code are implemented. Remaining work is Render deployment, a captured test payment traced through finalisation and dashboards, actual provider failure/pending rehearsals and a full browser-suite/rehearsal pass. Deployment evidence belongs in the separately maintained `docs/EXPO_DEPLOYMENT.md`.
+Atlas migration, three private role accounts, the INR 1 sandbox product, consistent totals, Render deployment and sandbox success are verified. Remaining work is the venue/mobile-data rehearsal, a full continuous cross-role UI walkthrough, provider failure/cancellation rehearsals, dashboard webhook registration/delivery and one uninterrupted full browser-suite pass. Current deployment evidence is recorded in `EXPO_IMPLEMENTATION_PLAN.md` and the private/local verification directory.
 
 ### Later production work
 

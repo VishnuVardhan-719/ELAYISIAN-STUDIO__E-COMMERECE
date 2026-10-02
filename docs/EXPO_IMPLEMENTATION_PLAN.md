@@ -54,7 +54,7 @@ Preserve the existing design, service seam, public domain shapes and local data.
 
 ## Progress
 
-- Feature branch created; source inspection underway.
+- Feature branch created and implementation reviewed.
 - Baseline tests: 91/91 passed on a sequential run.
 - Local migration safety tests: 3/3 passed after observed failing tests.
 - Migration completed to `elysian_expo`: ten collections, 41 documents;
@@ -63,9 +63,9 @@ Preserve the existing design, service seam, public domain shapes and local data.
 - Expo setup tests: 2/2 passed. Three private accounts and ₹1 product added only
   in Atlas; copied public demo login passwords rotated in the cloud copy.
 - Credentials saved in an ignored private account file; values never logged.
-- Sandbox checkout and single-origin hosting implemented. The actual Razorpay
-  test checkout iframe opened for a server-created INR 1 order; captured-payment
-  browser rehearsal remains pending.
+- Sandbox checkout and single-origin hosting implemented. The hosted Razorpay
+  test checkout completed through Netbanking and its mock bank Success button.
+  The server reconciled a captured INR 1 payment into a completed attempt/order.
 - Fresh release checks: 198 tests across 17 files passed; typecheck, ESLint and
   production build passed. Browser suite: 24/25 passed; the failed 1440px route
   check passed its isolated retry. This is not a single clean full-suite run.
@@ -74,15 +74,29 @@ Preserve the existing design, service seam, public domain shapes and local data.
   unrelated cart items.
 - Tested feature branch published; `main` remains unchanged.
 - Render free service `elysian-studio-expo` created with private configuration.
-  Cloud builds succeed; startup fails with a database connection timeout.
-  Hosted credentials match local settings and local production connects to Atlas.
-- Current deployment blocker: verify Atlas network access permits Render outbound
-  CIDRs `74.220.52.0/24` and `74.220.60.0/24`. The user must configure these in
-  Atlas Network Access; no Atlas project-management credentials were supplied.
+  Initial startup failed with a database connection timeout; the user added
+  Render outbound CIDRs `74.220.52.0/24` and `74.220.60.0/24` to Atlas.
+  Redeployment is now live and `/api/health` reports a connected database.
 - Safe startup diagnostics added and verified with three focused tests; no raw
   exception messages, secrets or connection strings are logged on startup failure.
 - Final full automated run: 201 tests across 18 files passed, including startup
-  diagnostics. The remaining blocker is provider configuration, not a failing
-  automated test. Neither failed cloud deployment is reported as live.
-- Hosted readiness, completed provider sandbox payment and webhook registration
-  remain unverified. Do not present this as a finished hosted payment release.
+  diagnostics. Earlier failed deployments are retained as history, not successes.
+- Public HTTPS address: `https://elysian-studio-expo.onrender.com`.
+  Hosted customer login, creator/admin logins and refreshed dashboards passed.
+  Direct product navigation returns HTML; unknown API paths return JSON 404.
+  Payment config reports enabled test mode; server-created demo orders are 100
+  paise with zero shipping, and the actual Razorpay checkout iframe opens.
+- Hosted success receipt verified in the browser. The order total is INR 1,
+  stock decreased from 100 to 99, and repeated reconciliation returns the same
+  order without another stock change. No real money was charged.
+- Authenticated hosted API checks confirm creator and admin visibility of the
+  completed order and the admin sandbox payment record. Three private account
+  browser logins were verified separately; a venue presentation is still needed.
+- Evidence: `.context/verification/expo-hosted-payment-result.json`,
+  `expo-hosted-cross-role-result.json`, and `expo-sandbox-completed.png`.
+- Razorpay dashboard webhook registration remains unverified. Backend webhook
+  handling passes isolated tests; hosted payment-status reconciliation was used
+  during the successful rehearsal. Do not claim hosted webhook delivery worked.
+- Failure/cancellation paths pass automated tests but have not received a complete
+  hosted provider rehearsal. Free-tier idle startup and venue connectivity remain
+  operational limitations; there is no live-payment or uptime guarantee.
