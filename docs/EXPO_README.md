@@ -60,6 +60,9 @@ The project demonstrates how interface actions become API requests and persisten
 | Customer, creator and admin role checks | Implemented |
 | MongoDB persistence through Mongoose | Implemented; local data migrated to Atlas |
 | Saved bags, wishlists, profiles, addresses and orders | Implemented in REST mode |
+| Product-card quick-add | Hosted desktop/mobile verification passed; stock limits, progress feedback and View bag included |
+| Checkout address selection | Selected saved address is submitted; new-address entry remains available |
+| Stock-aware shopping controls | Product-detail additions account for units already in the bag; duplicate cart requests are guarded |
 | Creator product creation and editing | Implemented |
 | Collaboration submission and admin review | Implemented |
 | Order creation, stock reduction and sample payment record | Implemented with simulated payment |

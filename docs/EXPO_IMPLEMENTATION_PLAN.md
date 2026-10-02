@@ -116,4 +116,19 @@ Preserve the existing design, service seam, public domain shapes and local data.
 - Research references: Shopify Dawn `snippets/card-product.liquid` quick-add
   states and W3C Understanding SC 4.1.3 Status Messages. No external template
   or additional dependencies were introduced.
-- Hosted deployment and hosted shopping checks are pending for this follow-up.
+- Shopping update deployed on the existing free Render service at commit
+  `be0b1ba`. Hosted Chromium checks at 390px and 1440px verify quick-add without
+  navigation, correct bag counts, persistence after refresh, wishlist and View
+  bag, with no horizontal overflow or application exceptions.
+- Evidence: `.context/verification/shopping-hosted-result.json` and
+  `shopping-hosted-390.png` / `shopping-hosted-1440.png`.
+- Broader browser checks exposed three ambiguous password locators following
+  the eye-button addition. The initial full run passed 31/34; all three failures
+  were locator strict-mode errors, not rejected logins. Exact-label corrections
+  passed a targeted 3/3 rerun. This is not an uninterrupted 34/34 run.
+- Fresh completion checks: lint and frontend/backend typecheck passed; all 226
+  unit/integration tests passed across 21 files. Production build passed before
+  deployment. Only test locators and verification documentation changed after
+  the hosted update; no additional production redeploy was required.
+- Logs: `shopping-full-browser.log`, `shopping-browser-retry-final.log` and
+  `shopping-completion-tests.log` under `.context/verification/`.

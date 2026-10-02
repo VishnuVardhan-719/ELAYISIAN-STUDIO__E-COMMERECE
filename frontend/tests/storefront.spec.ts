@@ -265,7 +265,7 @@ test("workspace routes require the matching role", async ({ page }) => {
   await page.goto("/register");
   await page.getByLabel("Full name").fill("Rowan Vale");
   await page.getByLabel("Email address").fill("rowan@example.test");
-  await page.getByLabel("Password").fill("longenough1");
+  await page.getByLabel("Password", { exact: true }).fill("longenough1");
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page).toHaveURL(/\/account$/);
 });

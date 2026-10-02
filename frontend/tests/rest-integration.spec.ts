@@ -7,7 +7,7 @@ async function register(page: Page, name: string, email: string) {
   await page.goto("/register");
   await page.getByLabel("Full name").fill(name);
   await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole("heading", { name: `Welcome back, ${name.split(" ")[0]}.` })).toBeVisible();
@@ -16,7 +16,7 @@ async function register(page: Page, name: string, email: string) {
 async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/account$/);
   await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible();
