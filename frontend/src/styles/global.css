@@ -590,6 +590,19 @@ textarea {
   font-size: 12px;
   line-height: 1.5;
 }
+.passwordControl {
+  position: relative;
+}
+.passwordControl input {
+  padding-right: 52px;
+}
+.passwordControl .iconButton {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  width: 44px;
+  height: 44px;
+}
 textarea {
   resize: vertical;
   min-height: 90px;

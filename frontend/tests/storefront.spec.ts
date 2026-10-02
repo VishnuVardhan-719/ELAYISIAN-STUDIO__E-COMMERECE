@@ -4,7 +4,13 @@ import AxeBuilder from "@axe-core/playwright";
 /** Signs in through the demo buttons on /login, then lands on the role's home. */
 async function signInAs(page: Page, label: "collector" | "maker" | "admin") {
   await page.goto("/login");
-  await page.getByRole("button", { name: new RegExp(`\\(${label}\\)`) }).click();
+  if (label === "admin") {
+    await page.getByLabel("Email address").fill("studio@example.test");
+    await page.getByLabel("Password", { exact: true }).fill("elysian123");
+    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  } else {
+    await page.getByRole("button", { name: new RegExp(`\\(${label}\\)`) }).click();
+  }
   await expect(page).not.toHaveURL(/\/login$/);
 }
 

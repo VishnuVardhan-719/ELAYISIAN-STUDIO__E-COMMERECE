@@ -26,6 +26,6 @@ describe("demo login shortcuts", () => {
     vi.stubEnv("VITE_API_MODE", mode);
     render(<MemoryRouter><Auth mode="login" /></MemoryRouter>);
     expect(screen.getByText("Demo accounts")).toBeVisible();
-    expect(screen.getByRole("button", { name: /Studio team/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Studio team/ })).not.toBeInTheDocument();
   });
 });

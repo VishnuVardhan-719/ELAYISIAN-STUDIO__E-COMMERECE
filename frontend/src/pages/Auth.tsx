@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Arrow, Field, PageHeading } from "../components/ui";
 import { HOME_BY_ROLE, useAuth } from "../context/AuthContext";
@@ -8,7 +9,6 @@ import { DEMO_PASSWORD } from "../services/api";
 const DEMO_ACCOUNTS: [string, string, string][] = [
   ["ananya@example.test", "customer", "Ananya (collector)"],
   ["mira@example.test", "creator", "Mira (maker)"],
-  ["studio@example.test", "admin", "Studio team (admin)"],
 ];
 
 export default function Auth({ mode }: { mode: "login" | "register" }) {
@@ -18,11 +18,22 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
   const location = useLocation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [accountType, setAccountType] = useState<"customer" | "creator">("customer");
   const from = (location.state as { from?: string } | null)?.from;
+
+  useEffect(() => {
+    if (!showPassword) return;
+    const timeout = window.setTimeout(() => setShowPassword(false), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [showPassword]);
 
   const finish = (name: string, role: keyof typeof HOME_BY_ROLE) => {
     notify(`Welcome${mode === "login" ? " back" : ""}, ${name.split(" ")[0]}.`);
-    navigate(from || HOME_BY_ROLE[role], { replace: true });
+    const destination = mode === "register" && accountType === "creator"
+      ? "/become-a-creator#application"
+      : role === "customer" ? from || HOME_BY_ROLE[role] : HOME_BY_ROLE[role];
+    navigate(destination, { replace: true });
   };
 
   const run = async (action: () => Promise<{ name: string; role: keyof typeof HOME_BY_ROLE }>) => {
@@ -57,6 +68,7 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
         className="checkoutForm"
         onSubmit={(event) => {
           event.preventDefault();
+          setShowPassword(false);
           const data = new FormData(event.currentTarget);
           const email = String(data.get("email") || "");
           const password = String(data.get("password") || "");
@@ -68,6 +80,17 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
         }}
       >
         {mode === "register" && (
+          <>
+          <Field label="Account type" name="accountType">
+            <select id="accountType" name="accountType" value={accountType}
+              disabled={busy} onChange={(event) => setAccountType(event.target.value === "creator" ? "creator" : "customer")}>
+              <option value="customer">Customer</option>
+              <option value="creator">Creator</option>
+            </select>
+          </Field>
+          {accountType === "creator" && <p className="muted">
+            Creator access requires a studio review. Create your account, then complete your creator application.
+          </p>}
           <Field
             label="Full name"
             name="name"
@@ -75,6 +98,7 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
             minLength={2}
             required
           />
+          </>
         )}
         <Field
           label="Email address"
@@ -83,14 +107,21 @@ export default function Auth({ mode }: { mode: "login" | "register" }) {
           autoComplete="email"
           required
         />
-        <Field
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete={mode === "login" ? "current-password" : "new-password"}
-          minLength={mode === "register" ? 8 : undefined}
-          required
-        />
+        <Field label="Password" name="password">
+          <div className="passwordControl" onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setShowPassword(false);
+          }}>
+            <input id="password" name="password" type={showPassword ? "text" : "password"}
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              minLength={mode === "register" ? 8 : undefined} required />
+            <button type="button" className="iconButton" disabled={busy}
+              aria-label={showPassword ? "Hide password" : "Show password for 3 seconds"}
+              aria-pressed={showPassword} aria-controls="password"
+              onClick={() => setShowPassword((visible) => !visible)}>
+              {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+            </button>
+          </div>
+        </Field>
         {error && (
           <p className="fieldError" role="alert">
             {error}
