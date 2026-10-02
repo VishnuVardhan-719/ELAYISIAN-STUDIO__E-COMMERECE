@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { connectDb } from "../../database/src/db";
 import { createApp } from "./app";
 import { env } from "./env";
+import { startupFailure } from "./startupError";
 
 async function start(): Promise<void> {
   await connectDb();
@@ -11,7 +12,7 @@ async function start(): Promise<void> {
   });
 }
 
-start().catch(() => {
-  console.error("[api] failed to start. Check server configuration and database availability.");
+start().catch((error: unknown) => {
+  console.error(startupFailure(error));
   process.exit(1);
 });
