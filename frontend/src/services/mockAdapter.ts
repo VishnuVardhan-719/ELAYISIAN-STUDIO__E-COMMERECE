@@ -1,4 +1,5 @@
 import { categories, collections } from "../data/mock";
+import type { AccountPreferences } from "../types/preferences";
 import type {
   Address,
   CartItem,
@@ -310,6 +311,18 @@ export const orderService = {
 };
 
 export const accountService = {
+  getPreferences: async (userId: string): Promise<AccountPreferences> => {
+    const stored = localStorage.getItem(`elysian-preferences-v1:${userId}`);
+    const preferences = stored ? JSON.parse(stored) : null;
+    return respond({
+      makersAndCollections: typeof preferences?.makersAndCollections === "boolean" ? preferences.makersAndCollections : true,
+      studioStories: typeof preferences?.studioStories === "boolean" ? preferences.studioStories : true,
+    });
+  },
+  savePreferences: async (userId: string, preferences: AccountPreferences): Promise<AccountPreferences> => {
+    localStorage.setItem(`elysian-preferences-v1:${userId}`, JSON.stringify(preferences));
+    return respond(preferences);
+  },
   getProfile: (userId?: string): Promise<User | null> => {
     const { users } = readState();
     return respond(
@@ -318,15 +331,17 @@ export const accountService = {
   },
   updateProfile: (userId: string, patch: Partial<Pick<User, "name" | "email">>) => {
     const state = updateState((draft) => {
+      const previousEmail = draft.users.find(
+        (user) => user.id === userId,
+      )?.email;
       draft.users = draft.users.map((user) =>
         user.id === userId ? { ...user, ...patch } : user,
       );
-      if (patch.email) {
-        const previous = draft.users.find((user) => user.id === userId);
-        if (previous && previous.email !== patch.email) {
-          const digest = draft.credentials[previous.email];
-          if (digest) delete draft.credentials[previous.email];
-          if (digest) draft.credentials[patch.email] = digest;
+      if (patch.email && previousEmail && previousEmail !== patch.email) {
+        const digest = draft.credentials[previousEmail];
+        if (digest) {
+          delete draft.credentials[previousEmail];
+          draft.credentials[patch.email] = digest;
         }
       }
     });

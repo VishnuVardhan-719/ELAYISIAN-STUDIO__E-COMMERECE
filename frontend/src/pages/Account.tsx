@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -7,6 +7,7 @@ import {
   orderService,
   productService,
   resetDemoData,
+  SESSION_KEY,
 } from "../services/api";
 import { useResource } from "../hooks/useResource";
 import { useStudio } from "../context/StudioContext";
@@ -24,6 +25,8 @@ import {
   PageHeading,
 } from "../components/ui";
 import type { Address } from "../types/domain";
+import type { AccountPreferences } from "../types/preferences";
+const restMode = import.meta.env.VITE_API_MODE === "rest";
 const links: [string, string][] = [
   ["", "Overview"],
   ["/orders", "Orders"],
@@ -37,13 +40,14 @@ export default function Account() {
   const { user } = useAuth();
   const load = useCallback(async () => {
     if (!user) return null;
-    const [profile, orders, wishlistProducts, creators] = await Promise.all([
+    const [profile, orders, wishlistProducts, creators, preferences] = await Promise.all([
       accountService.getProfile(user.id),
       orderService.listForUser(user.id),
       productService.listByIds(wishlist),
       creatorService.list(),
+      accountService.getPreferences(user.id),
     ]);
-    return { profile, orders, wishlistProducts, creators };
+    return { profile, orders, wishlistProducts, creators, preferences };
   }, [user, wishlist]);
   const { data, loading, error, retry } = useResource(load);
   return (
@@ -97,7 +101,7 @@ export default function Account() {
             <>
               <PageHeading
                 title="Your collected stories."
-                description="Every order you place in this browser is listed here."
+                description={restMode ? "Every order you place with your account is listed here." : "Every order you place in this browser is listed here."}
               />
               <OrdersTable orders={data.orders} />
             </>
@@ -125,9 +129,11 @@ export default function Account() {
           {path === "/account/addresses" && user && <Addresses userId={user.id} />}
           {path === "/account/settings" && (
             <Settings
+              key={user?.id}
               userId={user?.id || ""}
               name={data.profile?.name || ""}
               email={data.profile?.email || ""}
+              preferences={data.preferences}
               onSaved={retry}
             />
           )}{" "}
@@ -148,38 +154,69 @@ function Settings({
   userId,
   name,
   email,
+  preferences,
   onSaved,
 }: {
   userId: string;
   name: string;
   email: string;
+  preferences: AccountPreferences;
   onSaved: () => void;
 }) {
   const { notify } = useStudio();
   const [busy, setBusy] = useState(false);
+  const [choices, setChoices] = useState(preferences);
+  const lifecycle = useRef({ active: true, revision: 0 });
+  useEffect(() => {
+    const current = lifecycle.current;
+    current.active = true;
+    const sessionChanged = () => {
+      ++current.revision;
+      setBusy(false);
+    };
+    window.addEventListener("elysian-session-change", sessionChanged);
+    return () => {
+      current.active = false;
+      ++current.revision;
+      window.removeEventListener("elysian-session-change", sessionChanged);
+    };
+  }, []);
+  const restMode = import.meta.env.VITE_API_MODE === "rest";
   return (
     <>
       <PageHeading
         title="The personal details."
-        description="Edit your profile. Changes are saved to this browser."
+        description={restMode ? "Edit your profile. Changes are saved to your account." : "Edit your profile. Changes are saved to this browser."}
       />
       <form
         className="settingsForm"
         onSubmit={async (event) => {
           event.preventDefault();
+          if (busy) return;
           const form = new FormData(event.currentTarget);
+          const session = localStorage.getItem(SESSION_KEY);
+          const revision = lifecycle.current.revision;
+          const isCurrentSession = () => lifecycle.current.active && revision === lifecycle.current.revision && session === localStorage.getItem(SESSION_KEY);
           setBusy(true);
+          let profileSaved = false;
           try {
             await accountService.updateProfile(userId, {
               name: String(form.get("name") || ""),
               email: String(form.get("email") || ""),
             });
+            if (!isCurrentSession()) return;
+            profileSaved = true;
+            await accountService.savePreferences(userId, choices);
+            if (!isCurrentSession()) return;
             onSaved();
             notify("Your details were saved.");
           } catch {
-            notify("Your details could not be saved. Try again.");
+            if (!isCurrentSession()) return;
+            notify(profileSaved
+              ? "Your profile was saved, but preferences could not be saved. Try again."
+              : "Your details could not be saved. Try again.");
           } finally {
-            setBusy(false);
+            if (isCurrentSession()) setBusy(false);
           }
         }}
       >
@@ -199,18 +236,30 @@ function Settings({
         />
         <h3>Stay in the loop</h3>
         <label className="checkboxLabel">
-          <input type="checkbox" defaultChecked />
+          <input
+            type="checkbox"
+            name="makersAndCollections"
+            checked={choices.makersAndCollections}
+            disabled={busy}
+            onChange={(event) => setChoices({ ...choices, makersAndCollections: event.target.checked })}
+          />
           New makers and collections
         </label>
         <label className="checkboxLabel">
-          <input type="checkbox" defaultChecked />
+          <input
+            type="checkbox"
+            name="studioStories"
+            checked={choices.studioStories}
+            disabled={busy}
+            onChange={(event) => setChoices({ ...choices, studioStories: event.target.checked })}
+          />
           Stories from the studio
         </label>
         <button className="button" disabled={busy}>
           {busy ? "Saving…" : "Save preferences"}
         </button>
       </form>
-      <section className="infoSection">
+      {!restMode && <section className="infoSection">
         <h2>Demo data</h2>
         <p>
           Everything on this site is stored in this browser. Resetting restores
@@ -226,7 +275,7 @@ function Settings({
         >
           Reset demo data
         </button>
-      </section>
+      </section>}
     </>
   );
 }

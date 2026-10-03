@@ -7,6 +7,7 @@ import { useResource } from "../hooks/useResource";
 import { validateCollaboration } from "../utils/commerce";
 import type { Collaboration, CollaborationInput } from "../types/domain";
 import { Arrow, Field } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
 const initial: CollaborationInput = {
   name: "",
   email: "",
@@ -18,6 +19,7 @@ const initial: CollaborationInput = {
   terms: false,
 };
 export default function BecomeCreator() {
+  const { user, ready } = useAuth();
   const [form, setForm] = useState(initial),
     [errors, setErrors] = useState<
       Partial<Record<keyof CollaborationInput, string>>
@@ -114,7 +116,17 @@ export default function BecomeCreator() {
               studio team. Images stay on your device.
             </p>
           </aside>
-          {submitted ? (
+          {!ready ? (
+            <p role="status">Loading your account…</p>
+          ) : !user ? (
+            <div className="successPanel">
+              <h2>Sign in to share your craft.</h2>
+              <Link className="button" to="/login" state={{ from: "/become-a-creator#application" }}>
+                Sign in
+                <Arrow />
+              </Link>
+            </div>
+          ) : submitted ? (
             <div className="successPanel" role="status">
               <Check size={36} />
               <h2>Your application is with our studio team.</h2>
@@ -152,7 +164,8 @@ export default function BecomeCreator() {
               noValidate
               onSubmit={async (e) => {
                 e.preventDefault();
-                const next = validateCollaboration(form);
+                const application = { ...form, email: user.email };
+                const next = validateCollaboration(application);
                 setErrors(next);
                 if (Object.keys(next).length || fileError) {
                   setTimeout(
@@ -168,7 +181,7 @@ export default function BecomeCreator() {
                 setServiceError("");
                 try {
                   setCreated(
-                    await creatorService.createCollaborationDraft(form),
+                    await creatorService.createCollaborationDraft(application),
                   );
                   setSubmitted(true);
                 } catch {
@@ -195,8 +208,8 @@ export default function BecomeCreator() {
                   name="email"
                   type="email"
                   autoComplete="email"
-                  value={form.email}
-                  onChange={(e) => update("email", e.target.value)}
+                  value={user.email}
+                  readOnly
                   error={errors.email}
                   required
                 />

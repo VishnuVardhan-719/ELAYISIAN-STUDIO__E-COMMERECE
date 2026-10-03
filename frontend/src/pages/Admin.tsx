@@ -51,9 +51,9 @@ export default function Admin() {
       await adminService.reviewDemo(selected.id, status);
       retry();
       setSelected(null);
-      notify(`Request ${status} in this demo session.`);
-    } catch {
-      notify("The request could not be updated. Try again.");
+      notify(import.meta.env.VITE_API_MODE === "rest" ? `Request ${status}.` : `Request ${status} in this demo session.`);
+    } catch (failure) {
+      notify(failure instanceof Error ? failure.message : "The request could not be updated. Try again.");
     } finally {
       setBusy(false);
     }
@@ -308,8 +308,9 @@ export default function Admin() {
           {path === "/admin/payments" && (
             <>
               <p className="noticeBox">
-                These are illustrative payment records. No payment processor is
-                connected and no funds have moved.
+                {import.meta.env.VITE_API_MODE === "rest"
+                  ? "Razorpay sandbox and sample payment records. No real funds have moved."
+                  : "These are illustrative payment records. No payment processor is connected and no funds have moved."}
               </p>
               <div className="tableScroll">
                 <table>
@@ -361,8 +362,9 @@ export default function Admin() {
             <p>{selected.email}</p>
             <p>{selected.description}</p>
             <p className="muted">
-              Demo review only. This will not send an email, grant real access,
-              or store a database record.
+              {import.meta.env.VITE_API_MODE === "rest"
+                ? "Approval creates a creator profile and grants access to the signed-in applicant's account. Older unlinked applications must be resubmitted. No email is sent."
+                : "Demo review only. Decisions are saved in this browser; no creator access or email is provided."}
             </p>
             {selected.status === "pending" ? (
               <div className="buttonRow">
@@ -371,18 +373,18 @@ export default function Admin() {
                   disabled={busy}
                   onClick={() => review("approved")}
                 >
-                  Approve in demo
+                  Approve application
                 </button>
                 <button
                   className="button secondary"
                   disabled={busy}
                   onClick={() => review("declined")}
                 >
-                  Decline in demo
+                  Decline application
                 </button>
               </div>
             ) : (
-              <p>This sample request has already been {selected.status}.</p>
+              <p>This request has already been {selected.status}.</p>
             )}
           </>
         )}

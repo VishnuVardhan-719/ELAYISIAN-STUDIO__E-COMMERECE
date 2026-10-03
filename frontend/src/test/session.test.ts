@@ -125,4 +125,15 @@ describe("Account ownership", () => {
     const profile = await accountService.getProfile("demo-customer");
     expect(profile?.name).toBe("Ananya R.");
   });
+
+  it("keeps sign-in working after an email change", async () => {
+    await accountService.updateProfile("demo-customer", {
+      email: "ananya.r@example.test",
+    });
+    const session = await authService.login(
+      "ananya.r@example.test",
+      DEMO_PASSWORD,
+    );
+    expect(session.user.id).toBe("demo-customer");
+  });
 });

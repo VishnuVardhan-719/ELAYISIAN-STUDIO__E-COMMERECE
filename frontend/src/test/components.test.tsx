@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -6,6 +6,8 @@ import { Quantity, Modal, ErrorState } from "../components/ui";
 import { ProductCard } from "../components/ProductCard";
 import { OrdersTable } from "../components/OrdersTable";
 import { StudioProvider } from "../context/StudioContext";
+import { AuthProvider } from "../context/AuthContext";
+import { authService, cartService, SESSION_KEY } from "../services/api";
 import { products, orders } from "../data/mock";
 import BecomeCreator from "../pages/BecomeCreator";
 import Shop from "../pages/Shop";
@@ -22,6 +24,7 @@ describe("Interactive components", () => {
     expect(change).toHaveBeenCalledWith(2);
   });
   it("saves and removes a product from the wishlist", async () => {
+    vi.spyOn(cartService, "get").mockResolvedValue([]);
     render(
       <MemoryRouter>
         <StudioProvider>
@@ -29,6 +32,7 @@ describe("Interactive components", () => {
         </StudioProvider>
       </MemoryRouter>,
     );
+    await act(async () => {});
     await userEvent.click(
       screen.getByRole("button", { name: /Save The Sunday Vase/ }),
     );
@@ -68,18 +72,26 @@ describe("Interactive components", () => {
     expect(screen.getByText("Delivered")).toBeVisible();
   });
   it("shows validation errors for an empty application", async () => {
+    const result = await authService.login("ananya@example.test", "elysian123");
+    localStorage.setItem(SESSION_KEY, result.token);
     render(
       <MemoryRouter>
-        <BecomeCreator />
+        <AuthProvider><BecomeCreator /></AuthProvider>
       </MemoryRouter>,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Preview collaboration request" }),
+      await screen.findByRole("button", { name: "Preview collaboration request" }),
     );
     expect(await screen.findByText("Enter your full name.")).toBeVisible();
     expect(
       screen.getByText("Please agree to the collaboration terms."),
     ).toBeVisible();
+  });
+  it("requires an account before submitting a creator application", async () => {
+    render(<MemoryRouter><AuthProvider><BecomeCreator /></AuthProvider></MemoryRouter>);
+    expect(await screen.findByRole("heading", { name: "Sign in to share your craft." })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+    expect(screen.queryByRole("button", { name: "Preview collaboration request" })).not.toBeInTheDocument();
   });
   it("reads product filters from the URL", async () => {
     render(

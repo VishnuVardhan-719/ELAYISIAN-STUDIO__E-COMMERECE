@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import type { CartItem } from "../types/domain";
-import { cartService, followStore, wishlistService, WISHLIST_KEY } from "../services/api";
+import { cartService, followStore, SESSION_KEY, wishlistService, WISHLIST_KEY } from "../services/api";
 interface StudioState {
   cart: CartItem[];
   wishlist: string[];
@@ -43,6 +43,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const savedRevision = useRef(0);
   const cartRevision = useRef(0);
   const wishlistRevision = useRef(0);
+  const desiredWishlist = useRef(wishlist);
+  const confirmedWishlist = useRef(wishlist);
+  const wishlistWriteRevision = useRef(0);
+  const wishlistPending = useRef(false);
+  const wishlistReady = useRef(false);
+  const wishlistQueue = useRef(Promise.resolve());
+  const wishlistSession = useRef(localStorage.getItem(SESSION_KEY));
+  const wishlistLifecycle = useRef({ active: true });
   const changingCart = useRef(false);
   const notify = useCallback((message: string) => {
     setNotice(message);
@@ -51,15 +59,35 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     let active = true;
-    const refresh = () => {
+    const lifecycle = wishlistLifecycle.current;
+    lifecycle.active = true;
+    const refresh = (event?: Event) => {
       const current = ++savedRevision.current;
       const currentCart = ++cartRevision.current;
-      const currentWishlist = ++wishlistRevision.current;
+      ++wishlistRevision.current;
+      const currentWrite = wishlistWriteRevision.current;
+      const session = localStorage.getItem(SESSION_KEY);
+      wishlistSession.current = session;
+      wishlistReady.current = false;
+      wishlistQueue.current = Promise.resolve();
+      if (event) {
+        desiredWishlist.current = [];
+        confirmedWishlist.current = [];
+        wishlistPending.current = false;
+        setWishlist([]);
+      }
       Promise.all([cartService.get(), wishlistService.get()])
         .then(([savedCart, savedWishlist]) => {
           if (!active || current !== savedRevision.current) return;
           if (currentCart === cartRevision.current) setCart(savedCart);
-          if (currentWishlist === wishlistRevision.current) setWishlist(savedWishlist);
+          if (currentWrite === wishlistWriteRevision.current && session === localStorage.getItem(SESSION_KEY)) {
+            confirmedWishlist.current = savedWishlist;
+            if (!wishlistPending.current) {
+              desiredWishlist.current = savedWishlist;
+              setWishlist(savedWishlist);
+            }
+            wishlistReady.current = true;
+          }
         })
         .catch(() => {
           if (active && current === savedRevision.current) notify("Your saved bag could not be loaded.");
@@ -71,6 +99,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     window.addEventListener("elysian-merge-error", mergeError);
     return () => {
       active = false;
+      lifecycle.active = false;
       window.removeEventListener("elysian-session-change", refresh);
       window.removeEventListener("elysian-merge-error", mergeError);
       clearTimeout(timer.current);
@@ -119,15 +148,39 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     clearCart: () =>
       change(() => cartService.clear(), "Your bag is empty again."),
     toggleWishlist: (id) => {
+      const session = wishlistSession.current;
+      if (session !== localStorage.getItem(SESSION_KEY)) return;
+      if (!wishlistReady.current) {
+        notify("Your wishlist is loading. Please try again.");
+        return;
+      }
       const current = savedRevision.current;
       const currentWishlist = ++wishlistRevision.current;
-      const exists = wishlist.includes(id);
-      const next = exists ? wishlist.filter((i) => i !== id) : [...wishlist, id];
+      wishlistPending.current = true;
+      const exists = desiredWishlist.current.includes(id);
+      const next = exists ? desiredWishlist.current.filter((i) => i !== id) : [...desiredWishlist.current, id];
+      desiredWishlist.current = next;
       setWishlist(next);
-      wishlistService.set(next).catch((error: unknown) => {
-        if (current !== savedRevision.current || currentWishlist !== wishlistRevision.current) return;
-        setWishlist(wishlist);
-        notify(error instanceof Error ? error.message : "Your saved bag could not be loaded.");
+      const isCurrentSession = () => wishlistLifecycle.current.active && current === savedRevision.current && session === localStorage.getItem(SESSION_KEY);
+      wishlistQueue.current = wishlistQueue.current.then(async () => {
+        if (!isCurrentSession()) return;
+        try {
+          const saved = await wishlistService.set(next);
+          if (!isCurrentSession()) return;
+          ++wishlistWriteRevision.current;
+          confirmedWishlist.current = saved;
+          if (currentWishlist === wishlistRevision.current) {
+            wishlistPending.current = false;
+            desiredWishlist.current = saved;
+            setWishlist(saved);
+          }
+        } catch (error: unknown) {
+          if (!isCurrentSession() || currentWishlist !== wishlistRevision.current) return;
+          wishlistPending.current = false;
+          desiredWishlist.current = confirmedWishlist.current;
+          setWishlist(confirmedWishlist.current);
+          notify(error instanceof Error ? error.message : "Your saved bag could not be loaded.");
+        }
       });
       notify(exists ? "Removed from your wishlist." : "Saved to your wishlist.");
     },

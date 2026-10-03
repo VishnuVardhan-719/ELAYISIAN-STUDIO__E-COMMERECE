@@ -110,6 +110,8 @@ export const orderService: typeof mock.orderService = {
 };
 
 export const accountService: typeof mock.accountService = {
+  getPreferences: (_userId) => apiRequest("/users/me/preferences"),
+  savePreferences: (_userId, preferences) => write("/users/me/preferences", "PUT", preferences),
   getProfile: async (userId) => {
     const current = await authService.me(readToken());
     if (!userId || current?.id === userId) return current;

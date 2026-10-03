@@ -33,6 +33,8 @@ import { Product as ProductModel } from "../../database/src/models/Product";
 import { User as UserModel } from "../../database/src/models/User";
 import { DEMO_PASSWORD, seedDatabase } from "../../database/src/seed";
 import { supportsTransactions } from "../../database/src/db";
+import { assets } from "../../frontend/src/data/assets";
+import { HttpError } from "./middleware/errors";
 
 export { DEMO_PASSWORD };
 
@@ -190,11 +192,10 @@ export async function listCollaborations(): Promise<Collaboration[]> {
 }
 
 export async function getCollaborationFor(
-  email: string,
+  userId: string,
 ): Promise<Collaboration | null> {
-  const normalized = email.trim().toLowerCase();
   return plainOne<Collaboration>(
-    await CollaborationModel.findOne({ email: normalized })
+    await CollaborationModel.findOne({ userId })
       .sort({ _id: -1 })
       .lean(),
   );
@@ -202,22 +203,27 @@ export async function getCollaborationFor(
 
 export async function createCollaboration(
   input: CollaborationInput,
+  userId: string,
 ): Promise<Collaboration> {
   if (Object.keys(validateCollaboration(input)).length)
     throw new Error("Please check the application fields.");
+  const user = await UserModel.findOne({ id: userId }).lean<User>();
+  if (!user) throw new HttpError(401, "Authentication required.");
+  if (input.email.trim().toLowerCase() !== user.email)
+    throw new HttpError(400, "Use your account email for the application.");
   const ids = (await CollaborationModel.find().select("id").lean()).map(
     (entry) => (entry as unknown as { id: string }).id,
   );
   const collaboration: Collaboration = {
     id: nextSequentialId(ids, "COL", 3),
     creatorName: input.name,
-    email: input.email,
+    email: user.email,
     categoryId: input.categoryId,
     description: input.description,
     status: "pending",
     date: new Date().toISOString().slice(0, 10),
   };
-  await CollaborationModel.create(collaboration);
+  await CollaborationModel.create({ ...collaboration, userId });
   return collaboration;
 }
 
@@ -225,13 +231,63 @@ export async function reviewCollaboration(
   id: string,
   status: Collaboration["status"],
 ): Promise<Collaboration | null> {
-  return plainOne<Collaboration>(
-    await CollaborationModel.findOneAndUpdate(
-      { id },
+  if (status !== "approved") {
+    const updated = await CollaborationModel.findOneAndUpdate(
+      { id, status: { $ne: "approved" } },
       { $set: { status } },
       { returnDocument: "after" },
-    ).lean(),
-  );
+    ).lean();
+    if (updated) return plainOne<Collaboration>(updated);
+    if (await CollaborationModel.exists({ id }))
+      throw new HttpError(409, "Approved applications cannot be reopened or declined.");
+    return null;
+  }
+  const application = await CollaborationModel.findOne({ id }).select("+userId").lean<Collaboration & { userId?: string }>();
+  if (!application) return null;
+  if (!application.userId) {
+    if (application.status === "approved") {
+      const { userId: _userId, ...publicApplication } = application;
+      return plainOne<Collaboration>(publicApplication);
+    }
+    throw new HttpError(409, "The applicant must sign in and resubmit this application.");
+  }
+  if (!(await supportsTransactions()))
+    throw new HttpError(503, "Creator approval requires a transaction-capable database.");
+  return mongoose.connection.transaction(async (session) => {
+    const current = await CollaborationModel.findOne({ id }).select("+userId").session(session).lean<Collaboration & { userId?: string }>();
+    if (!current) return null;
+    if (!current.userId)
+      throw new HttpError(409, "The applicant must sign in and resubmit this application.");
+    const user = await UserModel.findOne({ id: current.userId }).session(session).lean<User>();
+    if (!user || user.role === "admin")
+      throw new HttpError(409, "This applicant cannot be provisioned as a creator.");
+    const category = await CategoryModel.findOne({ id: current.categoryId }).session(session).lean<Category>();
+    if (!category) throw new HttpError(409, "The application craft is no longer available.");
+    const creatorId = user.creatorId || `creator-${user.id}`;
+    if (await UserModel.exists({ id: { $ne: user.id }, creatorId }).session(session))
+      throw new HttpError(409, "This creator profile is already linked to another account.");
+    await CreatorModel.updateOne({ id: creatorId }, { $setOnInsert: {
+      id: creatorId,
+      name: current.creatorName,
+      studio: current.creatorName,
+      specialty: category.name,
+      location: "Profile setup pending",
+      bio: current.description,
+      image: assets.collaboration,
+      cover: assets.studio,
+      since: new Date().getFullYear(),
+    } }, { upsert: true, runValidators: true, session });
+    const linked = await UserModel.updateOne(
+      { id: user.id, role: user.role },
+      { $set: { role: "creator", creatorId } },
+      { runValidators: true, session },
+    );
+    if (linked.matchedCount !== 1)
+      throw new HttpError(409, "The applicant account changed during review.");
+    return plainOne<Collaboration>(await CollaborationModel.findOneAndUpdate(
+      { id }, { $set: { status: "approved" } }, { returnDocument: "after", session },
+    ).lean());
+  });
 }
 
 export async function listUsers(): Promise<User[]> {
@@ -353,7 +409,8 @@ export async function getCart(userId: string): Promise<CartItem[]> {
   const doc = (await CartModel.findOne({ userId }).select("items").lean()) as {
     items?: CartItem[];
   } | null;
-  return (doc?.items ?? []).map(({ productId, quantity }) => ({ productId, quantity }));
+  const items = (doc?.items ?? []).map(({ productId, quantity }) => ({ productId, quantity }));
+  return normalizeCart(items, await allProducts());
 }
 
 export async function addCartItem(
@@ -671,7 +728,7 @@ export async function getAdminAnalytics(): Promise<{
     CollaborationModel.aggregate<Collaboration>([
       { $match: { status: "pending" } },
       { $sort: { id: 1 } },
-      { $project: { _id: 0, __v: 0 } },
+      { $project: { _id: 0, __v: 0, userId: 0 } },
     ]),
   ]);
   return { revenueByCreator, lowStock, pendingCollaborations };

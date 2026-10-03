@@ -179,13 +179,14 @@ test("mobile menu, focus trap, search and filter drawer", async ({ page }) => {
 test("creator application is validated and lands in the studio review queue", async ({
   page,
 }) => {
+  await signInAs(page, "collector");
   await page.goto("/become-a-creator");
   await page
     .getByRole("button", { name: "Preview collaboration request" })
     .click();
   await expect(page.getByText("Enter your full name.")).toBeVisible();
   await page.getByLabel("Full name").fill("Asha Rao");
-  await page.getByLabel("Email address").fill("asha@example.test");
+  await expect(page.getByLabel("Email address")).toHaveValue("ananya@example.test");
   await page.getByLabel("Your craft", { exact: true }).selectOption("ceramics");
   await page
     .getByLabel("Tell us about your work")
@@ -238,14 +239,14 @@ test("an admin decision persists across a reload", async ({ page }) => {
   await signInAs(page, "admin");
   await page.goto("/admin/collaborations");
   await page.getByRole("button", { name: "Review Devika Nair" }).click();
-  await page.getByRole("button", { name: "Approve in demo" }).click();
+  await page.getByRole("button", { name: "Decline application" }).click();
   await expect(
     page.getByRole("row").filter({ hasText: "Devika Nair" }),
-  ).toContainText("approved");
+  ).toContainText("declined");
   await page.reload();
   await expect(
     page.getByRole("row").filter({ hasText: "Devika Nair" }),
-  ).toContainText("approved");
+  ).toContainText("declined");
 });
 test("workspace routes require the matching role", async ({ page }) => {
   await page.goto("/admin");

@@ -244,9 +244,10 @@ describe("first API route slice", () => {
   it("accepts valid collaborations and rejects invalid applications", async () => {
     const valid = await request("/api/collaborations", {
       method: "POST",
+      headers: { Authorization: `Bearer ${tokenFor("demo-customer")}` },
       body: JSON.stringify({
         name: "Leela Rao",
-        email: "leela@example.test",
+        email: "ananya@example.test",
         categoryId: "art",
         portfolio: "https://example.test/leela",
         description: "Original botanical prints made by hand in small editions.",
@@ -261,6 +262,7 @@ describe("first API route slice", () => {
 
     const invalid = await request("/api/collaborations", {
       method: "POST",
+      headers: { Authorization: `Bearer ${tokenFor("demo-customer")}` },
       body: JSON.stringify({
         name: "L",
         email: "invalid",
@@ -281,7 +283,7 @@ describe("first API route slice", () => {
     const mine = await request("/api/collaborations/me", {
       headers: { Authorization: `Bearer ${creatorToken}` },
     });
-    expect(mine.body).toMatchObject({ email: "mira@example.test", status: "approved" });
+    expect(mine.body).toBeNull();
 
     const customerList = await request("/api/collaborations", {
       headers: { Authorization: `Bearer ${tokenFor("demo-customer")}` },
@@ -294,12 +296,8 @@ describe("first API route slice", () => {
       headers: { Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({ status: "approved" }),
     });
-    expect(reviewed.response.status).toBe(200);
-    expect(reviewed.body).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "COL-021", status: "approved" }),
-      ]),
-    );
+    expect(reviewed.response.status).toBe(409);
+    expect(reviewed.body).toEqual({ error: "The applicant must sign in and resubmit this application." });
   });
 
   it("keeps carts isolated and enforces stock through authenticated routes", async () => {
@@ -367,6 +365,31 @@ describe("first API route slice", () => {
 
     expect(saved.body).toEqual(["sunset-vase", "studio-cup"]);
     expect((await request("/api/wishlist", { headers: creator })).body).toEqual([]);
+  });
+
+  it("persists private preferences across requests without changing public user shapes", async () => {
+    const path = "/api/users/me/preferences";
+    const customer = { Authorization: `Bearer ${tokenFor("demo-customer")}` };
+    const creator = { Authorization: `Bearer ${tokenFor("demo-creator")}` };
+    const admin = { Authorization: `Bearer ${tokenFor("demo-admin")}` };
+    const defaults = { makersAndCollections: true, studioStories: true };
+    const preferences = { makersAndCollections: false, studioStories: false };
+    expect((await request(path)).response.status).toBe(401);
+    expect((await request(path, { headers: customer })).body).toEqual(defaults);
+    const saved = await request(path, {
+      method: "PUT", headers: customer, body: JSON.stringify(preferences),
+    });
+    expect(saved.response.status).toBe(200);
+    expect(saved.body).toEqual(preferences);
+    expect((await request(path, { headers: customer })).body).toEqual(preferences);
+    expect((await request(path, { headers: creator })).body).toEqual(defaults);
+    expect((await request(path, {
+      method: "PUT", headers: customer,
+      body: JSON.stringify({ makersAndCollections: "false", studioStories: true }),
+    })).response.status).toBe(400);
+    expect((await request("/api/auth/me", { headers: customer })).body).not.toHaveProperty("preferences");
+    const users = (await request("/api/users", { headers: admin })).body as Record<string, unknown>[];
+    expect(users.find((user) => user.id === "demo-customer")).not.toHaveProperty("preferences");
   });
 
   it("scopes order lists and details to buyers, creators, and admins", async () => {

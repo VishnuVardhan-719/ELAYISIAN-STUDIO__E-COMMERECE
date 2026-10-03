@@ -27,7 +27,7 @@ const reviewSchema = z.strictObject({
   status: z.enum(["pending", "approved", "declined"]),
 });
 
-router.post("/collaborations", async (req, res) => {
+router.post("/collaborations", requireAuth, async (req, res) => {
   const parsed = applicationSchema.safeParse(req.body);
   if (
     !parsed.success ||
@@ -36,11 +36,11 @@ router.post("/collaborations", async (req, res) => {
     )
   )
     throw new HttpError(400, "Please check the application fields.");
-  res.status(201).json(await createCollaboration(parsed.data));
+  res.status(201).json(await createCollaboration(parsed.data, req.user!.id));
 });
 
 router.get("/collaborations/me", requireAuth, async (req, res) => {
-  res.json(await getCollaborationFor(req.user!.email));
+  res.json(await getCollaborationFor(req.user!.id));
 });
 
 router.get(

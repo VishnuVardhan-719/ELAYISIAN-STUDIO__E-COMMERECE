@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { HttpError } from "../middleware/errors";
+import { getPreferences, savePreferences } from "../preferences";
 import {
   listAddresses,
   listUsers,
@@ -11,6 +12,11 @@ import {
 } from "../store";
 
 const router = Router();
+
+const preferencesSchema = z.strictObject({
+  makersAndCollections: z.boolean(),
+  studioStories: z.boolean(),
+});
 
 const profileSchema = z
   .strictObject({
@@ -48,6 +54,14 @@ router.patch("/users/me", requireAuth, async (req, res) => {
 
 router.get("/users/me/addresses", requireAuth, async (req, res) => {
   res.json(await listAddresses(req.user!.id));
+});
+
+router.get("/users/me/preferences", requireAuth, async (req, res) => {
+  res.json(await getPreferences(req.user!.id));
+});
+
+router.put("/users/me/preferences", requireAuth, async (req, res) => {
+  res.json(await savePreferences(req.user!.id, preferencesSchema.parse(req.body)));
 });
 
 router.put("/users/me/addresses/:id", requireAuth, async (req, res) => {

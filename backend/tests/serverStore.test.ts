@@ -5,6 +5,7 @@ import { Cart as CartModel } from "../../database/src/models/Cart";
 import { Order as OrderModel } from "../../database/src/models/Order";
 import { Payment as PaymentModel } from "../../database/src/models/Payment";
 import { Product as ProductModel } from "../../database/src/models/Product";
+import type { CartItem } from "../../frontend/src/types/domain";
 import {
   addCartItem,
   createCheckout,
@@ -142,22 +143,42 @@ describe("mongoose server store", () => {
     ]);
   });
 
-  it("creates sequential collaboration records and reviews them", async () => {
+  it("drops unavailable lines when reading a stored cart", async () => {
+    await addCartItem("demo-customer", "sunset-vase", 2);
+    await addCartItem("demo-customer", "studio-cup", 1);
+    await ProductModel.updateOne(
+      { id: "sunset-vase" },
+      { $set: { status: "draft" } },
+    );
+    await ProductModel.updateOne({ id: "studio-cup" }, { $set: { stock: 0 } });
+    await CartModel.updateOne(
+      { userId: "demo-customer" },
+      { $push: { items: { productId: "deleted-piece", quantity: 1 } } },
+    );
+    expect(await getCart("demo-customer")).toEqual([]);
+  });
+
+  it("creates bound sequential collaborations and fails approval safely on standalone MongoDB", async () => {
     const created = await createCollaboration({
       name: "Leela Rao",
-      email: "leela@example.test",
+      email: "ananya@example.test",
       categoryId: "art",
       portfolio: "https://example.test/leela",
       description: "Original botanical prints made by hand in small editions.",
       reason: "I want to meet collectors who value slow printmaking.",
       sample: "A hand-pulled monsoon fern print.",
       terms: true,
-    });
+    }, "demo-customer");
 
     expect(created.id).toBe("COL-023");
-    expect(await reviewCollaboration(created.id, "approved")).toMatchObject({
+    await expect(reviewCollaboration(created.id, "approved")).rejects.toMatchObject({ status: 503 });
+    expect((await getUserByEmail("ananya@example.test"))?.user).toMatchObject({ role: "customer" });
+    expect((await getUserByEmail("ananya@example.test"))?.user.creatorId).toBeUndefined();
+    expect(await mongoose.model("Collaboration").findOne({ id: created.id }).lean()).toMatchObject({ status: "pending" });
+    expect(await mongoose.model("Creator").exists({ id: "creator-demo-customer" })).toBeNull();
+    expect(await reviewCollaboration(created.id, "declined")).toMatchObject({
       id: "COL-023",
-      status: "approved",
+      status: "declined",
     });
   });
 
@@ -272,7 +293,15 @@ describe("mongoose server store", () => {
     expect((await getProductById(second.id))?.stock).toBe(0);
     expect(await listOrders()).toEqual(orders);
     expect(await listPayments()).toEqual(payments);
-    expect(await getCart("demo-customer")).toEqual(cart);
+    const stored = (await CartModel.findOne({ userId: "demo-customer" })
+      .select("items")
+      .lean()) as { items?: CartItem[] } | null;
+    expect(
+      (stored?.items ?? []).map(({ productId, quantity }) => ({
+        productId,
+        quantity,
+      })),
+    ).toEqual(cart);
   });
 
   it("rolls back checkout when the payment provider fails", async () => {
