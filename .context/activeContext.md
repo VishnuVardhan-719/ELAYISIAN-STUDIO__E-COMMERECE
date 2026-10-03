@@ -1,5 +1,59 @@
 # Active context — live state
 
+## Current state — October 3, 2026
+
+Three batches of work sit uncommitted in the working tree: (1) the two audit
+fixes below, (2) the account preferences, creator-approval and admin-review
+work, and (3) session-scoped write hardening in `frontend/src/pages/Account.tsx`.
+The settings form now snapshots `SESSION_KEY` plus a lifecycle revision, listens
+for `elysian-session-change`, and abandons a save that finishes after a token
+change, a session event or an unmount — it writes no preferences and notifies
+nothing — and it reports partial success ("Your profile was saved, but
+preferences could not be saved.") when only the second write fails. REST mode
+also shows "Changes are saved to your account." and hides the demo-data reset.
+
+Verified October 3, 2026 against local MongoDB: **284 tests across 26 files
+passed** (frontend 133, backend 151) with `--maxWorkers=1 --no-file-parallelism`,
+plus `npm run typecheck`, `npm run lint` and `npm run build`. Logs:
+`.context/verification/resume-full-tests.log`, `resume-typecheck.log`,
+`resume-lint.log`, `resume-build.log`.
+
+The documentation screenshots were regenerated on October 3, 2026: the capture
+script predates the Entrance door and the admin `ProtectedRoute`, so
+`frontend/scripts/capture-pages.mjs` now skips the intro on `/` and signs in
+`studio@example.test` before the `/admin` shot. All six routes plus the
+first-screen shot were recaptured in REST mode against local MongoDB, and the
+jury docx/pdf were rebuilt to embed the refreshed first screen (36 pages, 3
+embedded images, verified with `verify_jury_docs.py`). The rendered code
+figures in `docs/assets/code/` were produced from current source the same
+morning. The screenshots, jury exports, code figures and the three code
+batches are committed and pushed to `feat/expo-cloud-sandbox`; the live site
+still runs `b8d6157`.
+
+Run Vitest through the local binary with `NODE_ENV=test`:
+`node node_modules/vitest/vitest.mjs run <paths>`. Piping that run through
+`npx`/`Tee-Object` returns exit 1 with an empty log on this machine.
+
+The jury-guide exports were regenerated on October 3, 2026 (36-page PDF, 3
+embedded images) from the current Markdown. `docs/jury/architecture.png` did not
+exist before: the earlier export silently substituted the storefront screenshot
+for that slot because the image line had been added to the Markdown after the
+export ran. A real layered-architecture diagram now occupies it. The docx/pdf
+generator and the coverage verifier are kept in `.scratch/jury-diagram/`
+(`build_jury_docs.py`, `verify_jury_docs.py`, `render.cjs`), and non-cover
+images are now sized to the content width instead of a fixed 75 pt.
+
+## Current state — October 2, 2026 (second pass)
+
+Two open audit findings from `EXPO_HANDOFF.md` are fixed and verified locally
+but **uncommitted**: backend `getCart` now normalizes stored carts on read
+(unavailable products no longer linger as invisible lines), and the mock
+adapter migrates credential digests across email changes so the next login
+works. Full suite: 230/230 tests, lint, typecheck, build — see
+`.context/verification/stale-cart-email-fix.log`. Note: run Vitest with
+`NODE_ENV=test`; the machine-wide `NODE_ENV=production` breaks jsdom render
+tests with `React.act is not a function`.
+
 ## Current state — September 30, 2026
 
 The frontend, REST adapter, Express routes, JWT authentication, and MongoDB
